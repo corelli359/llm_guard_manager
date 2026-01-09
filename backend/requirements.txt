@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+aiomysql
+pydantic
+pydantic-settings
+python-multipart
+pytest
+pytest-asyncio
+httpx
+cryptography
