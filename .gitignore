@@ -3,3 +3,5 @@ node_modules/
 .deepeval/
 .pytest_cache/
 dist/
+.vscode/
+.DS_Store/
