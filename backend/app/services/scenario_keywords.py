@@ -10,6 +10,11 @@ class ScenarioKeywordsService:
         self.repository = ScenarioKeywordsRepository(ScenarioKeywords, db)
 
     async def create_keyword(self, keyword_in: ScenarioKeywordsCreate) -> ScenarioKeywords:
+        # Check for duplicates in the same scenario
+        existing = await self.repository.get_by_scenario_and_keyword(keyword_in.scenario_id, keyword_in.keyword)
+        if existing:
+            raise ValueError(f"Keyword '{keyword_in.keyword}' already exists in scenario '{keyword_in.scenario_id}' (Category: {existing.category}).")
+
         obj_in_data = keyword_in.model_dump()
         obj_in_data['id'] = str(uuid.uuid4())
         return await self.repository.create(obj_in_data)

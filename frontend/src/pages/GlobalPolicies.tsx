@@ -66,8 +66,15 @@ const GlobalPoliciesPage: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchPolicies();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (error.response && error.response.data && error.response.data.detail) {
+        message.error(`操作失败: ${error.response.data.detail}`);
+      } else if (error.errorFields) {
+         // Form validation error, do nothing
+      } else {
+        message.error('操作失败，请重试');
+      }
     }
   };
 

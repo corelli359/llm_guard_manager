@@ -96,3 +96,27 @@ The project includes a `run_docker.sh` script to run the application using Docke
 *   **Configuration:** Backend settings (DB URL, Secrets) are managed in `backend/app/core/config.py` using `pydantic-settings`.
 *   **Data Flow:** Controller (`api`) -> Service (`services`) -> Repository (`repositories`) -> Database (`models`).
 *   **Frontend API:** API calls are typically abstracted in `src/api.ts` or within feature-specific files.
+
+## Updates Log
+
+### 2026-01-11
+*   **Frontend - ScenarioPolicies Enhancement:**
+    *   Improved `ScenarioPolicies.tsx` to support dynamic tag selection.
+    *   Added `MetaTag` fetching logic to the page.
+    *   Replaced manual input for `match_value` (when type is TAG) and `extra_condition` (when type is KEYWORD) with an Ant Design `Select` component populated with existing tags.
+    *   Ensured form validation and searchability within the tag selection.
+*   **Backend - Data Consistency & Uniqueness:**
+    *   **Scenario Keywords:** Implemented uniqueness check on create. Validates that `(scenario_id, keyword)` is unique.
+    *   **Scenario Policies:** Implemented uniqueness check on create. Validates that `(scenario_id, rule_mode, match_type, match_value)` is unique.
+    *   **Global Defaults:** Implemented uniqueness check on create. Validates that `(tag_code, extra_condition)` is unique.
+    *   **Repositories:** Added helper methods `get_by_scenario_and_keyword` and `get_duplicate` to support these checks.
+    *   **API Endpoints:** Updated `scenario_keywords.py` and `rule_policy.py` to catch `ValueError` from services and raise `HTTPException(400)` with the specific error message. This ensures the frontend receives the detailed "duplicate entry" message instead of a generic server error.
+*   **Frontend - Error Handling:**
+
+    *   Updated `ScenarioPolicies.tsx`, `ScenarioKeywords.tsx`, and `GlobalPolicies.tsx` to handle backend errors gracefully.
+    *   Enhanced `handleOk` methods to catch API errors and display detailed error messages (e.g., duplicate entry warnings) returned by the backend using `error.response.data.detail`.
+    *   **Navigation Fix:** Updated `AppDashboard.tsx` to use explicit `navigate('/apps')` instead of `window.history.back()`. This resolves the navigation loop issue where users could get stuck between the Dashboard and sub-pages (Keywords/Policies) when using the "Back" buttons.
+
+
+
+

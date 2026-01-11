@@ -78,7 +78,10 @@ async def create_global_default(
     current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
-    return await service.create_global_default(default_in)
+    try:
+        return await service.create_global_default(default_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/defaults/{default_id}", response_model=RuleGlobalDefaultsResponse)
 async def update_global_default(

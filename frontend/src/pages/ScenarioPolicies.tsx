@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Card, Row, Col, Tag, Radio } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import { RuleScenarioPolicy } from '../types';
-import { rulePoliciesApi } from '../api';
+import { RuleScenarioPolicy, MetaTag } from '../types';
+import { rulePoliciesApi, metaTagsApi } from '../api';
 
 const ScenarioPoliciesPage: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
 
   const [policies, setPolicies] = useState<RuleScenarioPolicy[]>([]);
+  const [tags, setTags] = useState<MetaTag[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -21,12 +22,22 @@ const ScenarioPoliciesPage: React.FC = () => {
 
   // Initial load from URL
   useEffect(() => {
+    fetchTags();
     if (appId) {
         setCurrentScenarioId(appId);
         setSearchScenarioId(appId);
         fetchPolicies(appId);
     }
   }, [appId]);
+
+  const fetchTags = async () => {
+    try {
+      const res = await metaTagsApi.getAll();
+      setTags(res.data);
+    } catch (error) {
+      console.error('Failed to fetch tags', error);
+    }
+  };
 
   const fetchPolicies = async (scenarioId: string) => {
     if (!scenarioId) return;
@@ -98,8 +109,15 @@ const ScenarioPoliciesPage: React.FC = () => {
       }
       setIsModalOpen(false);
       if (currentScenarioId) fetchPolicies(currentScenarioId);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (error.response && error.response.data && error.response.data.detail) {
+        message.error(`操作失败: ${error.response.data.detail}`);
+      } else if (error.errorFields) {
+         // Form validation error, do nothing
+      } else {
+        message.error('操作失败，请重试');
+      }
     }
   };
 
@@ -254,7 +272,11 @@ const ScenarioPoliciesPage: React.FC = () => {
                     label="关联标签 (可选)"
                     help="可选。该敏感词关联的分类标签。"
                 >
-                    <Input placeholder="例如：POLITICAL" />
+                    <Select placeholder="请选择标签" allowClear showSearch optionFilterProp="children">
+                        {tags.map(tag => (
+                            <Select.Option key={tag.tag_code} value={tag.tag_code}>{tag.tag_name} ({tag.tag_code})</Select.Option>
+                        ))}
+                    </Select>
                 </Form.Item>
              </>
           ) : (
@@ -263,10 +285,14 @@ const ScenarioPoliciesPage: React.FC = () => {
                 <Form.Item 
                     name="match_value" 
                     label="标签编码 (Match Value)" 
-                    rules={[{ required: true, message: '请输入标签编码' }]}
+                    rules={[{ required: true, message: '请选择标签编码' }]}
                     help="需要匹配的内容分类标签。"
                 >
-                    <Input placeholder="例如：VIOLENCE" />
+                    <Select placeholder="请选择标签" showSearch optionFilterProp="children">
+                        {tags.map(tag => (
+                            <Select.Option key={tag.tag_code} value={tag.tag_code}>{tag.tag_name} ({tag.tag_code})</Select.Option>
+                        ))}
+                    </Select>
                 </Form.Item>
                 <Form.Item 
                     name="extra_condition" 

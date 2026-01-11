@@ -24,7 +24,10 @@ async def create_scenario_keyword(
     current_user: str = Depends(get_current_user)
 ) -> Any:
     service = ScenarioKeywordsService(db)
-    return await service.create_keyword(keyword_in)
+    try:
+        return await service.create_keyword(keyword_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/{keyword_id}", response_model=ScenarioKeywordsResponse)
 async def update_scenario_keyword(

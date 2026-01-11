@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Badge, Button, Row, Col, Spin, Tag, message } from 'antd';
 import { SafetyCertificateOutlined, AlertOutlined, CheckCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { scenariosApi } from '../api';
@@ -7,6 +7,7 @@ import { ScenarioApp } from '../types';
 
 const AppDashboard: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
+  const navigate = useNavigate();
   const [appData, setAppData] = useState<ScenarioApp | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +33,7 @@ const AppDashboard: React.FC = () => {
 
   return (
     <div>
-      <Button icon={<ArrowLeftOutlined />} style={{ marginBottom: 16 }} onClick={() => window.history.back()}>
+      <Button icon={<ArrowLeftOutlined />} style={{ marginBottom: 16 }} onClick={() => navigate('/apps')}>
         返回应用列表
       </Button>
 

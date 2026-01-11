@@ -8,5 +8,24 @@ class RuleScenarioPolicyRepository(BaseRepository[RuleScenarioPolicy]):
         result = await self.db.execute(select(self.model).where(self.model.scenario_id == scenario_id))
         return result.scalars().all()
 
+    async def get_duplicate(self, scenario_id: str, rule_mode: int, match_type: str, match_value: str) -> Optional[RuleScenarioPolicy]:
+        query = select(self.model).where(
+            (self.model.scenario_id == scenario_id) &
+            (self.model.rule_mode == rule_mode) &
+            (self.model.match_type == match_type) &
+            (self.model.match_value == match_value)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().first()
+
 class RuleGlobalDefaultsRepository(BaseRepository[RuleGlobalDefaults]):
-    pass
+    async def get_duplicate(self, tag_code: str, extra_condition: Optional[str]) -> Optional[RuleGlobalDefaults]:
+        query = select(self.model).where(self.model.tag_code == tag_code)
+        
+        if extra_condition:
+            query = query.where(self.model.extra_condition == extra_condition)
+        else:
+            query = query.where(self.model.extra_condition.is_(None) | (self.model.extra_condition == ''))
+            
+        result = await self.db.execute(query)
+        return result.scalars().first()

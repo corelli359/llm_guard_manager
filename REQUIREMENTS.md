@@ -63,6 +63,24 @@
     *   **配置默认策略:** 针对特定的 `tag_code` 设置默认动作 (`strategy`)。
     *   **例如:** 所有标记为 "Politically Sensitive" (Tag) 的内容，全局默认 "BLOCK"。
 
+### 2.5 数据一致性与唯一性校验 (Data Consistency & Uniqueness)
+**目标:** 确保系统中的关键配置数据不重复，避免逻辑冲突。
+
+*   **全局敏感词校验 (Global Keywords):**
+    *   **校验规则:** 系统中同一个敏感词内容 (`keyword`) 必须唯一。
+    *   **行为:** 新增或编辑时，若检测到重复词汇，系统应拒绝并报错。
+
+*   **场景敏感词校验 (Scenario Keywords):**
+    *   **校验规则:** 同一个场景 (`scenario_id`) 下，同一个敏感词内容 (`keyword`) 必须唯一。
+    *   **互斥性:** 同一个词在同一场景下不能既是白名单又是黑名单，也不能重复定义为黑/白名单。
+
+*   **场景策略校验 (Scenario Policy):**
+    *   **校验规则:** 同一场景下，针对同一模式 (`rule_mode`)、同一匹配类型 (`match_type`) 和同一匹配值 (`match_value`) 的策略必须唯一。
+    *   **行为:** 避免同一条件触发多条冲突策略。
+
+*   **全局默认策略校验 (Global Defaults):**
+    *   **校验规则:** 针对同一标签 (`tag_code`) 和同一额外条件 (`extra_condition`) 的默认策略必须唯一。
+
 ## 3. 非功能性需求
 *   **架构:** 前后端分离。
     *   **前端:** 建议使用 React/Vue + Ant Design/Element Plus 等组件库构建管理后台。

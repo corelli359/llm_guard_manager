@@ -21,6 +21,19 @@ class RulePolicyService:
             if policy_in.extra_condition and policy_in.extra_condition not in ('safe', 'unsafe', 'controversial'):
                 raise ValueError("For TAG match type, extra_condition must be 'safe', 'unsafe', or 'controversial' if provided.")
         
+        # Check for duplicates
+        existing = await self.scenario_repo.get_duplicate(
+            policy_in.scenario_id, 
+            policy_in.rule_mode, 
+            policy_in.match_type, 
+            policy_in.match_value
+        )
+        if existing:
+            raise ValueError(
+                f"Duplicate policy: Scenario '{policy_in.scenario_id}' already has a rule for "
+                f"Mode {policy_in.rule_mode}, Type {policy_in.match_type}, Value '{policy_in.match_value}'."
+            )
+
         obj_in_data = policy_in.model_dump()
         obj_in_data['id'] = str(uuid.uuid4())
         return await self.scenario_repo.create(obj_in_data)
@@ -40,6 +53,14 @@ class RulePolicyService:
     # --- Global Defaults ---
 
     async def create_global_default(self, default_in: RuleGlobalDefaultsCreate) -> RuleGlobalDefaults:
+        # Check for duplicates
+        existing = await self.global_repo.get_duplicate(default_in.tag_code, default_in.extra_condition)
+        if existing:
+            raise ValueError(
+                f"Duplicate global default: Rule for Tag '{default_in.tag_code}' "
+                f"with condition '{default_in.extra_condition}' already exists."
+            )
+
         obj_in_data = default_in.model_dump()
         obj_in_data['id'] = str(uuid.uuid4())
         return await self.global_repo.create(obj_in_data)
