@@ -1,7 +1,8 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import meta_tags, global_keywords, scenario_keywords, rule_policy, scenarios
+from app.api.v1.endpoints import meta_tags, global_keywords, scenario_keywords, rule_policy, scenarios, auth
 
 api_router = APIRouter()
+api_router.include_router(auth.router, prefix="/login", tags=["login"])
 api_router.include_router(meta_tags.router, prefix="/tags", tags=["tags"])
 api_router.include_router(global_keywords.router, prefix="/keywords/global", tags=["global-keywords"])
 api_router.include_router(scenario_keywords.router, prefix="/keywords/scenario", tags=["scenario-keywords"])

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Card, Row, Col } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Card, Row, Col, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ScenarioKeyword } from '../types';
@@ -25,7 +25,7 @@ const ScenarioKeywordsPage: React.FC = () => {
       setSearchScenarioId(appId);
       fetchKeywords(appId);
     }
-  }, [appId]);
+  }, [appId, searchParams]); // Added searchParams to re-filter if category changes
 
   const fetchKeywords = async (scenarioId: string) => {
     if (!scenarioId) return;
@@ -43,7 +43,7 @@ const ScenarioKeywordsPage: React.FC = () => {
       setKeywords(data);
       setCurrentScenarioId(scenarioId);
     } catch (error) {
-      message.error('Failed to fetch scenario keywords');
+      message.error('获取场景敏感词失败');
     } finally {
       setLoading(false);
     }
@@ -51,18 +51,15 @@ const ScenarioKeywordsPage: React.FC = () => {
 
   const handleSearch = () => {
     if (searchScenarioId.trim()) {
-      // If we are in "standalone" mode (no appId in URL), just fetch
-      // If we are in "app context" mode, we might want to navigate or just fetch. 
-      // For simplicity, just fetch.
       fetchKeywords(searchScenarioId.trim());
     } else {
-      message.warning('Please enter a Scenario ID');
+      message.warning('请输入场景 ID');
     }
   };
 
   const handleAdd = () => {
     if (!currentScenarioId) {
-      message.warning('Please select a scenario first');
+      message.warning('请先选择一个场景');
       return;
     }
     setEditingId(null);
@@ -91,10 +88,10 @@ const ScenarioKeywordsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await scenarioKeywordsApi.delete(id);
-      message.success('Keyword deleted');
+      message.success('敏感词已删除');
       if (currentScenarioId) fetchKeywords(currentScenarioId);
     } catch (error) {
-      message.error('Failed to delete keyword');
+      message.error('删除失败');
     }
   };
 
@@ -103,10 +100,10 @@ const ScenarioKeywordsPage: React.FC = () => {
       const values = await form.validateFields();
       if (editingId) {
         await scenarioKeywordsApi.update(editingId, values);
-        message.success('Keyword updated');
+        message.success('敏感词已更新');
       } else {
         await scenarioKeywordsApi.create(values);
-        message.success('Keyword created');
+        message.success('敏感词已成功添加');
       }
       setIsModalOpen(false);
       if (currentScenarioId) fetchKeywords(currentScenarioId);
@@ -116,29 +113,40 @@ const ScenarioKeywordsPage: React.FC = () => {
   };
 
   const columns = [
-    { title: 'Scenario ID', dataIndex: 'scenario_id', key: 'scenario_id' },
-    { title: 'Keyword', dataIndex: 'keyword', key: 'keyword' },
+    { title: '场景 ID', dataIndex: 'scenario_id', key: 'scenario_id' },
+    { title: '敏感词内容', dataIndex: 'keyword', key: 'keyword' },
     { 
-      title: 'Category', 
+      title: '名单类型', 
       dataIndex: 'category', 
       key: 'category',
-      render: (val: number) => val === 0 ? <span style={{color: 'green'}}>Whitelist</span> : <span style={{color: 'red'}}>Blacklist</span>
+      render: (val: number) => val === 0 ? <Tag color="green">白名单 (Allow)</Tag> : <Tag color="red">黑名单 (Block)</Tag>
     },
-    { title: 'Tag Code', dataIndex: 'tag_code', key: 'tag_code' },
-    { title: 'Risk Level', dataIndex: 'risk_level', key: 'risk_level' },
+    { title: '关联标签', dataIndex: 'tag_code', key: 'tag_code', render: (text: string) => text ? <Tag color="blue">{text}</Tag> : '-' },
+    { 
+      title: '风险等级', 
+      dataIndex: 'risk_level', 
+      key: 'risk_level',
+      render: (level: string) => {
+        let color = 'default';
+        if (level === 'High') color = 'red';
+        if (level === 'Medium') color = 'orange';
+        if (level === 'Low') color = 'green';
+        return level ? <Tag color={color}>{level}</Tag> : '-';
+      }
+    },
     {
-      title: 'Active',
+      title: '是否启用',
       dataIndex: 'is_active',
       key: 'is_active',
       render: (active: boolean) => <Switch size="small" checked={active} disabled />
     },
     {
-      title: 'Action',
+      title: '操作',
       key: 'action',
       render: (_: any, record: ScenarioKeyword) => (
         <Space size="middle">
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="确定要删除吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
         </Space>
@@ -151,20 +159,20 @@ const ScenarioKeywordsPage: React.FC = () => {
       <div style={{ marginBottom: 16 }}>
         {appId && (
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/apps/${appId}`)} style={{ marginBottom: 16 }}>
-                Back to App Dashboard
+                返回应用概览
             </Button>
         )}
-        <h2>Scenario Keywords {appId ? `for ${appId}` : ''}</h2>
+        <h2>场景敏感词库 {appId ? `- ${appId}` : ''}</h2>
         
         {!appId && (
-            <Card>
+            <Card title="选择场景">
             <Row gutter={16} align="middle">
                 <Col>
-                <span>Scenario ID: </span>
+                <span>场景 ID (Scenario ID): </span>
                 </Col>
                 <Col flex="auto">
                 <Input 
-                    placeholder="Enter Scenario ID (e.g. chat_bot_01)" 
+                    placeholder="请输入场景 ID (如：chat_bot_01)" 
                     value={searchScenarioId}
                     onChange={e => setSearchScenarioId(e.target.value)}
                     onPressEnter={handleSearch}
@@ -172,7 +180,7 @@ const ScenarioKeywordsPage: React.FC = () => {
                 </Col>
                 <Col>
                 <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-                    Load Config
+                    加载配置
                 </Button>
                 </Col>
             </Row>
@@ -184,7 +192,7 @@ const ScenarioKeywordsPage: React.FC = () => {
         <>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              Add Keyword to {currentScenarioId}
+              添加敏感词 ({currentScenarioId})
             </Button>
           </div>
           <Table 
@@ -197,35 +205,37 @@ const ScenarioKeywordsPage: React.FC = () => {
       )}
 
       <Modal 
-        title={editingId ? "Edit Keyword" : "Add New Keyword"} 
+        title={editingId ? "编辑敏感词" : "添加敏感词"} 
         open={isModalOpen} 
         onOk={handleOk} 
         onCancel={() => setIsModalOpen(false)}
+        okText="确定"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="scenario_id" label="Scenario ID" rules={[{ required: true }]}>
+          <Form.Item name="scenario_id" label="场景 ID" rules={[{ required: true }]}>
             <Input disabled />
           </Form.Item>
-          <Form.Item name="keyword" label="Keyword" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item name="keyword" label="敏感词内容" rules={[{ required: true, message: '请输入敏感词' }]}>
+            <Input placeholder="例如：某些敏感词汇" />
           </Form.Item>
-          <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+          <Form.Item name="category" label="名单类型" rules={[{ required: true }]}>
             <Select>
-              <Select.Option value={1}>Blacklist (Block)</Select.Option>
-              <Select.Option value={0}>Whitelist (Allow)</Select.Option>
+              <Select.Option value={1}>黑名单 (Block)</Select.Option>
+              <Select.Option value={0}>白名单 (Allow)</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="tag_code" label="Tag Code">
-             <Input />
+          <Form.Item name="tag_code" label="关联标签 (Tag Code)">
+             <Input placeholder="例如：POLITICAL" />
           </Form.Item>
-          <Form.Item name="risk_level" label="Risk Level">
-            <Select>
-              <Select.Option value="High">High</Select.Option>
-              <Select.Option value="Medium">Medium</Select.Option>
-              <Select.Option value="Low">Low</Select.Option>
+          <Form.Item name="risk_level" label="风险等级">
+            <Select placeholder="选择风险等级">
+              <Select.Option value="High">高 (High)</Select.Option>
+              <Select.Option value="Medium">中 (Medium)</Select.Option>
+              <Select.Option value="Low">低 (Low)</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
+          <Form.Item name="is_active" label="是否启用" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>

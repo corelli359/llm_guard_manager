@@ -9,3 +9,6 @@ pytest
 pytest-asyncio
 httpx
 cryptography
+python-jose[cryptography]
+passlib[bcrypt]
+greenlet

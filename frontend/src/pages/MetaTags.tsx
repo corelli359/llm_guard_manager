@@ -17,7 +17,7 @@ const MetaTagsPage: React.FC = () => {
       const res = await metaTagsApi.getAll();
       setTags(res.data);
     } catch (error) {
-      message.error('Failed to fetch tags');
+      message.error('获取标签列表失败');
     } finally {
       setLoading(false);
     }
@@ -44,10 +44,10 @@ const MetaTagsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await metaTagsApi.delete(id);
-      message.success('Tag deleted');
+      message.success('标签已删除');
       fetchTags();
     } catch (error) {
-      message.error('Failed to delete tag');
+      message.error('删除失败');
     }
   };
 
@@ -56,10 +56,10 @@ const MetaTagsPage: React.FC = () => {
       const values = await form.validateFields();
       if (editingId) {
         await metaTagsApi.update(editingId, values);
-        message.success('Tag updated');
+        message.success('标签已更新');
       } else {
         await metaTagsApi.create(values);
-        message.success('Tag created');
+        message.success('标签已创建');
       }
       setIsModalOpen(false);
       fetchTags();
@@ -70,23 +70,23 @@ const MetaTagsPage: React.FC = () => {
   };
 
   const columns = [
-    { title: 'Tag Code', dataIndex: 'tag_code', key: 'tag_code' },
-    { title: 'Tag Name', dataIndex: 'tag_name', key: 'tag_name' },
-    { title: 'Parent Code', dataIndex: 'parent_code', key: 'parent_code' },
-    { title: 'Level', dataIndex: 'level', key: 'level' },
+    { title: '标签编码 (Code)', dataIndex: 'tag_code', key: 'tag_code' },
+    { title: '标签名称', dataIndex: 'tag_name', key: 'tag_name' },
+    { title: '父级编码', dataIndex: 'parent_code', key: 'parent_code' },
+    { title: '层级 (Level)', dataIndex: 'level', key: 'level' },
     {
-      title: 'Active',
+      title: '状态',
       dataIndex: 'is_active',
       key: 'is_active',
       render: (active: boolean) => <Switch size="small" checked={active} disabled />
     },
     {
-      title: 'Action',
+      title: '操作',
       key: 'action',
       render: (_: any, record: MetaTag) => (
         <Space size="middle">
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="确定删除该标签吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
         </Space>
@@ -97,9 +97,9 @@ const MetaTagsPage: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Meta Tags Management</h2>
+        <h2>标签管理 (Meta Tags)</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          Add New Tag
+          新增标签
         </Button>
       </div>
       
@@ -111,25 +111,27 @@ const MetaTagsPage: React.FC = () => {
       />
 
       <Modal 
-        title={editingId ? "Edit Tag" : "Add New Tag"} 
+        title={editingId ? "编辑标签" : "新增标签"} 
         open={isModalOpen} 
         onOk={handleOk} 
         onCancel={() => setIsModalOpen(false)}
+        okText="确定"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="tag_code" label="Tag Code" rules={[{ required: true }]}>
-            <Input disabled={!!editingId} /> 
+          <Form.Item name="tag_code" label="标签编码 (Tag Code)" rules={[{ required: true, message: '请输入标签编码' }]}>
+            <Input disabled={!!editingId} placeholder="例如：POLITICS" /> 
           </Form.Item>
-          <Form.Item name="tag_name" label="Tag Name" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item name="tag_name" label="标签名称" rules={[{ required: true, message: '请输入标签名称' }]}>
+            <Input placeholder="例如：政治敏感" />
           </Form.Item>
-          <Form.Item name="parent_code" label="Parent Code">
-            <Input />
+          <Form.Item name="parent_code" label="父级编码 (Parent Code)">
+            <Input placeholder="可选" />
           </Form.Item>
-          <Form.Item name="level" label="Level" rules={[{ required: true }]}>
+          <Form.Item name="level" label="层级 (Level)" rules={[{ required: true }]}>
             <InputNumber min={1} />
           </Form.Item>
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
+          <Form.Item name="is_active" label="是否启用" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>

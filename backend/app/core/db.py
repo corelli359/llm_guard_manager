@@ -4,7 +4,6 @@ from app.core.config import settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=True, # 开发环境开启 echo
-    future=True
 )
 
 AsyncSessionLocal = async_sessionmaker(

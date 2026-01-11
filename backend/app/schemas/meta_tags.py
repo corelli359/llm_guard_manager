@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class MetaTagsBase(BaseModel):
     tag_code: str
@@ -20,5 +20,4 @@ class MetaTagsUpdate(BaseModel):
 class MetaTagsResponse(MetaTagsBase):
     id: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

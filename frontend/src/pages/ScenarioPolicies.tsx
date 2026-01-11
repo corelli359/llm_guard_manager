@@ -36,7 +36,7 @@ const ScenarioPoliciesPage: React.FC = () => {
       setPolicies(res.data);
       setCurrentScenarioId(scenarioId);
     } catch (error) {
-      message.error('Failed to fetch policies');
+      message.error('获取策略列表失败');
     } finally {
       setLoading(false);
     }
@@ -46,14 +46,14 @@ const ScenarioPoliciesPage: React.FC = () => {
     if (searchScenarioId.trim()) {
       fetchPolicies(searchScenarioId.trim());
     } else {
-      message.warning('Please enter a Scenario ID');
+      message.warning('请输入场景 ID');
     }
   };
 
 
   const handleAdd = () => {
     if (!currentScenarioId) {
-      message.warning('Please select a scenario first');
+      message.warning('请先选择一个场景');
       return;
     }
     setEditingId(null);
@@ -79,10 +79,10 @@ const ScenarioPoliciesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await rulePoliciesApi.delete(id);
-      message.success('Policy deleted');
+      message.success('策略已删除');
       if (currentScenarioId) fetchPolicies(currentScenarioId);
     } catch (error) {
-      message.error('Failed to delete policy');
+      message.error('删除失败');
     }
   };
 
@@ -91,10 +91,10 @@ const ScenarioPoliciesPage: React.FC = () => {
       const values = await form.validateFields();
       if (editingId) {
         await rulePoliciesApi.update(editingId, values);
-        message.success('Policy updated');
+        message.success('策略已更新');
       } else {
         await rulePoliciesApi.create(values);
-        message.success('Policy created');
+        message.success('策略已创建');
       }
       setIsModalOpen(false);
       if (currentScenarioId) fetchPolicies(currentScenarioId);
@@ -110,36 +110,37 @@ const ScenarioPoliciesPage: React.FC = () => {
   };
 
   const columns = [
-    { title: 'Rule Mode', dataIndex: 'rule_mode', key: 'rule_mode', 
-      render: (val: number) => val === 0 ? <Tag color="gold">Super (0)</Tag> : <Tag color="blue">Custom (1)</Tag>
+    { title: '规则模式', dataIndex: 'rule_mode', key: 'rule_mode', 
+      render: (val: number) => val === 0 ? <Tag color="gold">超级模式 (0)</Tag> : <Tag color="blue">自定义 (1)</Tag>
     },
-    { title: 'Match Type', dataIndex: 'match_type', key: 'match_type',
-      render: (val: string) => <Tag>{val}</Tag>
+    { title: '匹配类型', dataIndex: 'match_type', key: 'match_type',
+      render: (val: string) => <Tag>{val === 'KEYWORD' ? '敏感词' : '标签'}</Tag>
     },
-    { title: 'Match Value', dataIndex: 'match_value', key: 'match_value' },
-    { title: 'Extra Condition', dataIndex: 'extra_condition', key: 'extra_condition' },
-    { title: 'Strategy', dataIndex: 'strategy', key: 'strategy',
+    { title: '匹配内容', dataIndex: 'match_value', key: 'match_value' },
+    { title: '额外条件', dataIndex: 'extra_condition', key: 'extra_condition' },
+    { title: '处置策略', dataIndex: 'strategy', key: 'strategy',
       render: (val: string) => {
         let color = 'default';
-        if (val === 'BLOCK') color = 'red';
-        if (val === 'PASS') color = 'green';
-        if (val === 'REWRITE') color = 'orange';
-        return <Tag color={color}>{val}</Tag>;
+        let text = val;
+        if (val === 'BLOCK') { color = 'red'; text = '拦截 (BLOCK)'; }
+        if (val === 'PASS') { color = 'green'; text = '放行 (PASS)'; }
+        if (val === 'REWRITE') { color = 'orange'; text = '重写 (REWRITE)'; }
+        return <Tag color={color}>{text}</Tag>;
       }
     },
     {
-      title: 'Active',
+      title: '是否启用',
       dataIndex: 'is_active',
       key: 'is_active',
       render: (active: boolean) => <Switch size="small" checked={active} disabled />
     },
     {
-      title: 'Action',
+      title: '操作',
       key: 'action',
       render: (_: any, record: RuleScenarioPolicy) => (
         <Space size="middle">
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="确定要删除此策略吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
         </Space>
@@ -152,19 +153,19 @@ const ScenarioPoliciesPage: React.FC = () => {
       <div style={{ marginBottom: 16 }}>
         {appId && (
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/apps/${appId}`)} style={{ marginBottom: 16 }}>
-                Back to App Dashboard
+                返回应用概览
             </Button>
         )}
-        <h2>Scenario Policies {appId ? `for ${appId}` : ''}</h2>
+        <h2>场景策略管理 {appId ? `- ${appId}` : ''}</h2>
         {!appId && (
-            <Card>
+            <Card title="选择场景">
             <Row gutter={16} align="middle">
                 <Col>
-                <span>Scenario ID: </span>
+                <span>场景 ID (Scenario ID): </span>
                 </Col>
                 <Col flex="auto">
                 <Input 
-                    placeholder="Enter Scenario ID" 
+                    placeholder="请输入场景 ID" 
                     value={searchScenarioId}
                     onChange={e => setSearchScenarioId(e.target.value)}
                     onPressEnter={handleSearch}
@@ -172,7 +173,7 @@ const ScenarioPoliciesPage: React.FC = () => {
                 </Col>
                 <Col>
                 <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-                    Load Policies
+                    加载策略
                 </Button>
                 </Col>
             </Row>
@@ -184,7 +185,7 @@ const ScenarioPoliciesPage: React.FC = () => {
         <>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              Add Policy to {currentScenarioId}
+              新增策略 ({currentScenarioId})
             </Button>
           </div>
           <Table 
@@ -197,41 +198,43 @@ const ScenarioPoliciesPage: React.FC = () => {
       )}
 
       <Modal 
-        title={editingId ? "Edit Policy" : "Add New Policy"} 
+        title={editingId ? "编辑策略" : "新增策略"} 
         open={isModalOpen} 
         onOk={handleOk} 
         onCancel={() => setIsModalOpen(false)}
         width={600}
+        okText="确定"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="scenario_id" label="Scenario ID" rules={[{ required: true }]}>
+          <Form.Item name="scenario_id" label="场景 ID" rules={[{ required: true }]}>
             <Input disabled />
           </Form.Item>
 
           <Row gutter={16}>
             <Col span={12}>
-                <Form.Item name="rule_mode" label="Rule Mode" rules={[{ required: true }]}>
+                <Form.Item name="rule_mode" label="规则模式" rules={[{ required: true }]}>
                     <Select>
-                        <Select.Option value={0}>0 - Super (Black/White)</Select.Option>
-                        <Select.Option value={1}>1 - Custom</Select.Option>
+                        <Select.Option value={0}>0 - 超级模式 (黑/白名单优先)</Select.Option>
+                        <Select.Option value={1}>1 - 自定义模式</Select.Option>
                     </Select>
                 </Form.Item>
             </Col>
             <Col span={12}>
-                <Form.Item name="strategy" label="Strategy" rules={[{ required: true }]}>
+                <Form.Item name="strategy" label="处置策略 (Strategy)" rules={[{ required: true }]}>
                     <Select>
-                        <Select.Option value="BLOCK">BLOCK</Select.Option>
-                        <Select.Option value="PASS">PASS</Select.Option>
-                        <Select.Option value="REWRITE">REWRITE</Select.Option>
+                        <Select.Option value="BLOCK">拦截 (BLOCK)</Select.Option>
+                        <Select.Option value="PASS">放行 (PASS)</Select.Option>
+                        <Select.Option value="REWRITE">重写 (REWRITE)</Select.Option>
                     </Select>
                 </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item name="match_type" label="Match Type" rules={[{ required: true }]}>
+          <Form.Item name="match_type" label="匹配类型" rules={[{ required: true }]}>
             <Radio.Group onChange={handleMatchTypeChange}>
-                <Radio.Button value="KEYWORD">KEYWORD</Radio.Button>
-                <Radio.Button value="TAG">TAG</Radio.Button>
+                <Radio.Button value="KEYWORD">敏感词 (KEYWORD)</Radio.Button>
+                <Radio.Button value="TAG">标签 (TAG)</Radio.Button>
             </Radio.Group>
           </Form.Item>
 
@@ -240,18 +243,18 @@ const ScenarioPoliciesPage: React.FC = () => {
              <>
                 <Form.Item 
                     name="match_value" 
-                    label="Keyword (Match Value)" 
-                    rules={[{ required: true, message: 'Please input the keyword' }]}
-                    help="The sensitive word to match."
+                    label="敏感词内容 (Match Value)" 
+                    rules={[{ required: true, message: '请输入要匹配的敏感词' }]}
+                    help="需要匹配的具体词汇。"
                 >
-                    <Input placeholder="e.g. sensitive_word" />
+                    <Input placeholder="例如：某些敏感词" />
                 </Form.Item>
                 <Form.Item 
                     name="extra_condition" 
-                    label="Related Tag (Extra Condition)"
-                    help="Optional. The tag code associated with this keyword."
+                    label="关联标签 (可选)"
+                    help="可选。该敏感词关联的分类标签。"
                 >
-                    <Input placeholder="e.g. POLITICAL" />
+                    <Input placeholder="例如：POLITICAL" />
                 </Form.Item>
              </>
           ) : (
@@ -259,27 +262,27 @@ const ScenarioPoliciesPage: React.FC = () => {
              <>
                 <Form.Item 
                     name="match_value" 
-                    label="Tag Code (Match Value)" 
-                    rules={[{ required: true, message: 'Please input the Tag Code' }]}
-                    help="The content classification tag to match."
+                    label="标签编码 (Match Value)" 
+                    rules={[{ required: true, message: '请输入标签编码' }]}
+                    help="需要匹配的内容分类标签。"
                 >
-                    <Input placeholder="e.g. VIOLENCE" />
+                    <Input placeholder="例如：VIOLENCE" />
                 </Form.Item>
                 <Form.Item 
                     name="extra_condition" 
-                    label="Model Judgement (Extra Condition)"
-                    help="Filter by the model's safety judgement result."
+                    label="模型判定结果 (可选)"
+                    help="基于模型安全判定结果进行过滤。"
                 >
-                    <Select allowClear>
-                        <Select.Option value="safe">safe</Select.Option>
-                        <Select.Option value="unsafe">unsafe</Select.Option>
-                        <Select.Option value="controversial">controversial</Select.Option>
+                    <Select allowClear placeholder="请选择结果类型">
+                        <Select.Option value="safe">safe (安全)</Select.Option>
+                        <Select.Option value="unsafe">unsafe (不安全)</Select.Option>
+                        <Select.Option value="controversial">controversial (有争议)</Select.Option>
                     </Select>
                 </Form.Item>
              </>
           )}
 
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
+          <Form.Item name="is_active" label="是否启用" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>

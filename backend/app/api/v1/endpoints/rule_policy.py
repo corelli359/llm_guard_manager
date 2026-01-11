@@ -7,6 +7,7 @@ from app.schemas.rule_policy import (
     RuleGlobalDefaultsResponse, RuleGlobalDefaultsCreate, RuleGlobalDefaultsUpdate
 )
 from app.services.rule_policy import RulePolicyService
+from app.api.v1.deps import get_current_user
 
 router = APIRouter()
 
@@ -15,7 +16,8 @@ router = APIRouter()
 @router.get("/scenario/{scenario_id}", response_model=List[RuleScenarioPolicyResponse])
 async def read_scenario_policies(
     scenario_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     return await service.get_scenario_policies(scenario_id)
@@ -23,7 +25,8 @@ async def read_scenario_policies(
 @router.post("/scenario/", response_model=RuleScenarioPolicyResponse)
 async def create_scenario_policy(
     policy_in: RuleScenarioPolicyCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     try:
@@ -35,7 +38,8 @@ async def create_scenario_policy(
 async def update_scenario_policy(
     policy_id: str,
     policy_in: RuleScenarioPolicyUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     try:
@@ -46,7 +50,8 @@ async def update_scenario_policy(
 @router.delete("/scenario/{policy_id}", response_model=RuleScenarioPolicyResponse)
 async def delete_scenario_policy(
     policy_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     policy = await service.delete_scenario_policy(policy_id)
@@ -60,7 +65,8 @@ async def delete_scenario_policy(
 async def read_global_defaults(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     return await service.get_all_global_defaults(skip, limit)
@@ -68,7 +74,8 @@ async def read_global_defaults(
 @router.post("/defaults/", response_model=RuleGlobalDefaultsResponse)
 async def create_global_default(
     default_in: RuleGlobalDefaultsCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     return await service.create_global_default(default_in)
@@ -77,7 +84,8 @@ async def create_global_default(
 async def update_global_default(
     default_id: str,
     default_in: RuleGlobalDefaultsUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     try:
@@ -88,7 +96,8 @@ async def update_global_default(
 @router.delete("/defaults/{default_id}", response_model=RuleGlobalDefaultsResponse)
 async def delete_global_default(
     default_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = RulePolicyService(db)
     default_obj = await service.delete_global_default(default_id)

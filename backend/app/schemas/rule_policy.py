@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 
 class RuleScenarioPolicyBase(BaseModel):
     scenario_id: str
@@ -36,8 +36,7 @@ class RuleScenarioPolicyUpdate(BaseModel):
 
 class RuleScenarioPolicyResponse(RuleScenarioPolicyBase):
     id: str
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Global Defaults ---
 
@@ -58,5 +57,4 @@ class RuleGlobalDefaultsUpdate(BaseModel):
 
 class RuleGlobalDefaultsResponse(RuleGlobalDefaultsBase):
     id: str
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

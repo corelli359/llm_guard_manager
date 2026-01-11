@@ -19,7 +19,7 @@ const AppsPage: React.FC = () => {
       const res = await scenariosApi.getAll();
       setApps(res.data);
     } catch (error) {
-      message.error('Failed to fetch apps');
+      message.error('获取应用列表失败');
     } finally {
       setLoading(false);
     }
@@ -50,10 +50,10 @@ const AppsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await scenariosApi.delete(id);
-      message.success('App deleted');
+      message.success('应用已注销');
       fetchApps();
     } catch (error) {
-      message.error('Failed to delete app');
+      message.error('删除失败');
     }
   };
 
@@ -62,10 +62,10 @@ const AppsPage: React.FC = () => {
       const values = await form.validateFields();
       if (editingId) {
         await scenariosApi.update(editingId, values);
-        message.success('App updated');
+        message.success('应用信息已更新');
       } else {
         await scenariosApi.create(values);
-        message.success('App created');
+        message.success('应用已成功注册');
       }
       setIsModalOpen(false);
       fetchApps();
@@ -75,30 +75,30 @@ const AppsPage: React.FC = () => {
   };
 
   const columns = [
-    { title: 'App ID', dataIndex: 'app_id', key: 'app_id', render: (text: string) => <b>{text}</b> },
-    { title: 'App Name', dataIndex: 'app_name', key: 'app_name' },
-    { title: 'Active', dataIndex: 'is_active', key: 'is_active', render: (val: boolean) => <Switch size="small" checked={val} disabled /> },
+    { title: '应用 ID (App ID)', dataIndex: 'app_id', key: 'app_id', render: (text: string) => <b>{text}</b> },
+    { title: '应用名称', dataIndex: 'app_name', key: 'app_name' },
+    { title: '状态', dataIndex: 'is_active', key: 'is_active', render: (val: boolean) => <Switch size="small" checked={val} disabled /> },
     { 
-      title: 'Features', 
+      title: '功能模块', 
       key: 'features',
       render: (_: any, record: ScenarioApp) => (
         <Space size="small">
-          {record.enable_blacklist && <Tag color="red">Blacklist</Tag>}
-          {record.enable_whitelist && <Tag color="green">Whitelist</Tag>}
-          {record.enable_custom_policy && <Tag color="blue">Policies</Tag>}
+          {record.enable_blacklist && <Tag color="red">黑名单</Tag>}
+          {record.enable_whitelist && <Tag color="green">白名单</Tag>}
+          {record.enable_custom_policy && <Tag color="blue">自定义策略</Tag>}
         </Space>
       )
     },
     {
-      title: 'Action',
+      title: '操作',
       key: 'action',
       render: (_: any, record: ScenarioApp) => (
         <Space size="middle">
           <Button type="link" icon={<AppstoreOutlined />} onClick={() => navigate(`/apps/${record.app_id}`)}>
-            Manage
+            进入管理
           </Button>
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="确定注销该应用吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
         </Space>
@@ -109,9 +109,9 @@ const AppsPage: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>App Management</h2>
+        <h2>应用管理 (App Management)</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          Register New App
+          注册新应用
         </Button>
       </div>
 
@@ -123,33 +123,35 @@ const AppsPage: React.FC = () => {
       />
 
       <Modal 
-        title={editingId ? "Edit App" : "Register New App"} 
+        title={editingId ? "编辑应用" : "注册新应用"} 
         open={isModalOpen} 
         onOk={handleOk} 
         onCancel={() => setIsModalOpen(false)}
+        okText="确定"
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="app_id" label="App ID (Unique)" rules={[{ required: true }]}>
-            <Input disabled={!!editingId} placeholder="e.g. chat_bot_01" />
+          <Form.Item name="app_id" label="应用唯一标识 (App ID)" rules={[{ required: true, message: '请输入应用 ID' }]}>
+            <Input disabled={!!editingId} placeholder="例如：chat_bot_01" />
           </Form.Item>
-          <Form.Item name="app_name" label="App Name" rules={[{ required: true }]}>
-            <Input placeholder="e.g. Customer Service Bot" />
+          <Form.Item name="app_name" label="应用名称" rules={[{ required: true, message: '请输入应用名称' }]}>
+            <Input placeholder="例如：智能客服助手" />
           </Form.Item>
-          <Form.Item name="description" label="Description">
-            <Input.TextArea />
+          <Form.Item name="description" label="应用描述">
+            <Input.TextArea placeholder="可选：简要描述应用用途" />
           </Form.Item>
           
-          <Card size="small" title="Feature Flags" style={{ marginTop: 16 }}>
-             <Form.Item name="is_active" label="App Active" valuePropName="checked">
+          <Card size="small" title="功能开关" style={{ marginTop: 16 }}>
+             <Form.Item name="is_active" label="激活应用" valuePropName="checked">
                 <Switch />
              </Form.Item>
-             <Form.Item name="enable_blacklist" label="Enable Blacklist Keywords" valuePropName="checked">
+             <Form.Item name="enable_blacklist" label="启用敏感词黑名单" valuePropName="checked">
                 <Switch />
              </Form.Item>
-             <Form.Item name="enable_whitelist" label="Enable Whitelist Keywords" valuePropName="checked">
+             <Form.Item name="enable_whitelist" label="启用白名单" valuePropName="checked">
                 <Switch />
              </Form.Item>
-             <Form.Item name="enable_custom_policy" label="Enable Custom Policies" valuePropName="checked">
+             <Form.Item name="enable_custom_policy" label="启用自定义处置策略" valuePropName="checked">
                 <Switch />
              </Form.Item>
           </Card>

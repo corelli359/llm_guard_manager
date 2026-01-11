@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 from app.schemas.meta_tags import MetaTagsResponse, MetaTagsCreate, MetaTagsUpdate
 from app.services.meta_tags import MetaTagsService
+from app.api.v1.deps import get_current_user
 
 router = APIRouter()
 
@@ -11,7 +12,8 @@ router = APIRouter()
 async def read_tags(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = MetaTagsService(db)
     return await service.get_all_tags(skip, limit)
@@ -19,7 +21,8 @@ async def read_tags(
 @router.post("/", response_model=MetaTagsResponse)
 async def create_tag(
     tag_in: MetaTagsCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = MetaTagsService(db)
     try:
@@ -31,7 +34,8 @@ async def create_tag(
 async def update_tag(
     tag_id: str,
     tag_in: MetaTagsUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = MetaTagsService(db)
     try:
@@ -42,7 +46,8 @@ async def update_tag(
 @router.delete("/{tag_id}", response_model=MetaTagsResponse)
 async def delete_tag(
     tag_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
 ) -> Any:
     service = MetaTagsService(db)
     tag = await service.delete_tag(tag_id)

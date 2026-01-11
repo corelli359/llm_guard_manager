@@ -11,8 +11,7 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get(self, id: Any) -> Optional[ModelType]:
-        result = await self.db.execute(select(self.model).where(self.model.id == id))
-        return result.scalars().first()
+        return await self.db.get(self.model, id)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ModelType]:
         result = await self.db.execute(select(self.model).offset(skip).limit(limit))

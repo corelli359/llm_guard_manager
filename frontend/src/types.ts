@@ -36,6 +36,14 @@ export interface RuleScenarioPolicy {
   is_active: boolean;
 }
 
+export interface RuleGlobalDefault {
+  id: string;
+  tag_code: string;
+  extra_condition?: string;
+  strategy: string; // BLOCK / PASS / REWRITE
+  is_active: boolean;
+}
+
 export interface ScenarioApp {
   id: string;
   app_id: string;

@@ -1,57 +1,171 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Layout, Menu, theme } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Layout, Menu, theme, Select } from 'antd';
 import {
   TagsOutlined,
   GlobalOutlined,
   DashboardOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  LoginOutlined,
+  SafetyCertificateOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import MetaTagsPage from './pages/MetaTags';
 import GlobalKeywordsPage from './pages/GlobalKeywords';
+import GlobalPoliciesPage from './pages/GlobalPolicies';
 import ScenarioKeywordsPage from './pages/ScenarioKeywords';
 import ScenarioPoliciesPage from './pages/ScenarioPolicies';
 import AppsPage from './pages/Apps';
 import AppDashboard from './pages/AppDashboard';
+import LoginPage from './pages/LoginPage';
+import { scenariosApi } from './api';
+import { ScenarioApp } from './types';
 
 // Placeholder components
-const Dashboard = () => <div><h2>Welcome to LLM Guard Manager</h2><p>Select a module from the sidebar to manage configurations.</p></div>;
+const Dashboard = () => <div><h2>欢迎使用 LLM Guard 管理平台</h2><p>请从左侧菜单选择应用进行管理，或前往“应用管理”创建新应用。</p></div>;
 
 const { Header, Content, Footer, Sider } = Layout;
+
+// Protected Route Component
+const AuthLayout: React.FC = () => {
+  const isAuthenticated = localStorage.getItem('access_token');
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Outlet />;
+};
+
 
 const AppLayout: React.FC = () => {
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const menuItems = [
+  const [apps, setApps] = useState<ScenarioApp[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(localStorage.getItem('current_app_id'));
+
+  useEffect(() => {
+    fetchApps();
+  }, []);
+
+  const fetchApps = async () => {
+    try {
+        const res = await scenariosApi.getAll();
+        setApps(res.data);
+        // If current selected app is not in the list (e.g. deleted), clear it
+        if (selectedAppId && !res.data.find(app => app.app_id === selectedAppId)) {
+            setSelectedAppId(null);
+            localStorage.removeItem('current_app_id');
+        }
+    } catch (error) {
+        console.error("Failed to fetch apps", error);
+    }
+  };
+
+  const handleAppChange = (value: string) => {
+    setSelectedAppId(value);
+    localStorage.setItem('current_app_id', value);
+    // Optionally auto-navigate to dashboard when switching app
+    navigate(`/apps/${value}`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('current_app_id');
+    navigate('/login');
+  };
+
+  // Construct Menu Items
+  const menuItems: any[] = [
     {
-      key: '/',
-      icon: <DashboardOutlined />,
-      label: <Link to="/">Dashboard</Link>,
-    },
-    {
-      key: '/apps',
-      icon: <AppstoreOutlined />,
-      label: <Link to="/apps">App Management</Link>,
-    },
-    {
-      key: '/tags',
-      icon: <TagsOutlined />,
-      label: <Link to="/tags">Meta Tags</Link>,
-    },
-    {
-      key: '/global-keywords',
-      icon: <GlobalOutlined />,
-      label: <Link to="/global-keywords">Global Keywords</Link>,
-    },
+      type: 'group',
+      label: '全局配置',
+      children: [
+        {
+            key: '/apps',
+            icon: <AppstoreOutlined />,
+            label: <Link to="/apps">应用管理</Link>,
+        },
+        {
+            key: '/tags',
+            icon: <TagsOutlined />,
+            label: <Link to="/tags">标签管理</Link>,
+        },
+        {
+            key: '/global-keywords',
+            icon: <GlobalOutlined />,
+            label: <Link to="/global-keywords">全局敏感词</Link>,
+        },
+        {
+            key: '/global-policies',
+            icon: <SafetyCertificateOutlined />,
+            label: <Link to="/global-policies">全局默认规则</Link>,
+        },
+      ]
+    }
   ];
+
+  if (selectedAppId) {
+      menuItems.push({
+          type: 'divider'
+      });
+      menuItems.push({
+          type: 'group',
+          label: `当前应用: ${selectedAppId}`,
+          children: [
+            {
+                key: `/apps/${selectedAppId}`,
+                icon: <DashboardOutlined />,
+                label: <Link to={`/apps/${selectedAppId}`}>应用概览</Link>,
+            },
+            {
+                key: `/apps/${selectedAppId}/keywords`,
+                icon: <FileTextOutlined />,
+                label: <Link to={`/apps/${selectedAppId}/keywords`}>场景关键词</Link>,
+            },
+            {
+                key: `/apps/${selectedAppId}/policies`,
+                icon: <SafetyCertificateOutlined />,
+                label: <Link to={`/apps/${selectedAppId}/policies`}>场景策略</Link>,
+            },
+          ]
+      });
+  }
+  
+  // Append Logout at the end
+  menuItems.push({ type: 'divider' });
+  menuItems.push({
+      key: '/logout',
+      icon: <LoginOutlined />,
+      label: '退出登录',
+      onClick: handleLogout,
+      danger: true
+  });
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider breakpoint="lg" collapsedWidth="0">
-        <div className="demo-logo-vertical" style={{ height: 32, margin: 16, background: 'rgba(255, 255, 255, 0.2)' }} />
+      <Sider
+        breakpoint="lg"
+        collapsedWidth="0"
+      >
+        <div style={{ padding: '16px', color: 'white', fontWeight: 'bold', fontSize: '18px', textAlign: 'center' }}>
+            LLM Guard 管理平台
+        </div>
+        
+        <div style={{ padding: '0 16px 16px 16px' }}>
+            <Select
+                style={{ width: '100%' }}
+                placeholder="请选择应用..."
+                value={selectedAppId}
+                onChange={handleAppChange}
+                options={apps.map(app => ({ label: app.app_name, value: app.app_id }))}
+                loading={apps.length === 0}
+                notFoundContent="未找到应用"
+            />
+        </div>
+
         <Menu
           theme="dark"
           mode="inline"
@@ -71,21 +185,23 @@ const AppLayout: React.FC = () => {
             }}
           >
             <Routes>
+              {/* Nested routes for AppLayout, rendered via Outlet in AuthLayout */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/apps" element={<AppsPage />} />
+              
+              {/* App Specific Routes */}
               <Route path="/apps/:appId" element={<AppDashboard />} />
               <Route path="/apps/:appId/keywords" element={<ScenarioKeywordsPage />} />
               <Route path="/apps/:appId/policies" element={<ScenarioPoliciesPage />} />
               
               <Route path="/tags" element={<MetaTagsPage />} />
               <Route path="/global-keywords" element={<GlobalKeywordsPage />} />
-              <Route path="/scenario-keywords" element={<ScenarioKeywordsPage />} />
-              <Route path="/scenario-policies" element={<ScenarioPoliciesPage />} />
+              <Route path="/global-policies" element={<GlobalPoliciesPage />} />
             </Routes>
           </div>
         </Content>
         <Footer style={{ textAlign: 'center' }}>
-          LLM Guard Manager ©{new Date().getFullYear()}
+          LLM Guard Manager ©{new Date().getFullYear()} Created by Corelli
         </Footer>
       </Layout>
     </Layout>
@@ -95,7 +211,12 @@ const AppLayout: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
-      <AppLayout />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<AuthLayout />}>
+          <Route path="/*" element={<AppLayout />} /> {/* Catch all other routes under AuthLayout */}
+        </Route>
+      </Routes>
     </Router>
   );
 };
