@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Card, Row, Col, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { ScenarioKeyword } from '../types';
-import { scenarioKeywordsApi } from '../api';
+import { ScenarioKeyword, MetaTag } from '../types';
+import { scenarioKeywordsApi, metaTagsApi } from '../api';
+
+const { Option } = Select;
 
 const ScenarioKeywordsPage: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
@@ -11,6 +13,7 @@ const ScenarioKeywordsPage: React.FC = () => {
   const navigate = useNavigate();
   
   const [keywords, setKeywords] = useState<ScenarioKeyword[]>([]);
+  const [tags, setTags] = useState<MetaTag[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,6 +28,7 @@ const ScenarioKeywordsPage: React.FC = () => {
       setSearchScenarioId(appId);
       fetchKeywords(appId);
     }
+    fetchTags();
   }, [appId, searchParams]); // Added searchParams to re-filter if category changes
 
   const fetchKeywords = async (scenarioId: string) => {
@@ -46,6 +50,15 @@ const ScenarioKeywordsPage: React.FC = () => {
       message.error('获取场景敏感词失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const res = await metaTagsApi.getAll();
+      setTags(res.data);
+    } catch (error) {
+      message.error('获取标签列表失败');
     }
   };
 
@@ -226,7 +239,11 @@ const ScenarioKeywordsPage: React.FC = () => {
             </Select>
           </Form.Item>
           <Form.Item name="tag_code" label="关联标签 (Tag Code)">
-             <Input placeholder="例如：POLITICAL" />
+            <Select placeholder="请选择标签" showSearch optionFilterProp="children" allowClear>
+              {tags.map(tag => (
+                <Option key={tag.tag_code} value={tag.tag_code}>{tag.tag_name} ({tag.tag_code})</Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item name="risk_level" label="风险等级">
             <Select placeholder="选择风险等级">

@@ -4,6 +4,6 @@ node_modules/
 .pytest_cache/
 dist/
 .vscode/
-.DS_Store/
+.DS_Store
 *.zip
 backend/app/core/config.py
