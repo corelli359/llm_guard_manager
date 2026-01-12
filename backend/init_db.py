@@ -9,7 +9,8 @@ from app.models.db_meta import (
     MetaTags, 
     ScenarioKeywords, 
     RuleScenarioPolicy, 
-    RuleGlobalDefaults
+    RuleGlobalDefaults,
+    PlaygroundHistory
 )
 
 async def init_database():

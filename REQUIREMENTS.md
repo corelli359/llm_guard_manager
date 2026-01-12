@@ -81,6 +81,126 @@
 *   **全局默认策略校验 (Global Defaults):**
     *   **校验规则:** 针对同一标签 (`tag_code`) 和同一额外条件 (`extra_condition`) 的默认策略必须唯一。
 
+## 2.6 试验场
+要构建三快内容，输入试验场、输出试验场和全流程试验场
+### 2.6.1 输入试验场 (Input Playground)
+**目标:** 提供一个交互式界面，允许用户选择特定场景 (`app_id`) 并输入测试文本，调用后端的围栏服务 (Guardrail Service) 实时检测内容合规性。
+
+#### 1. 业务流程
+1.  **配置阶段:** 用户在前端选择已有的场景 (`scenario_id` 即 `app_id`)，输入待检测文本，并配置检测参数（如是否启用白名单、VIP策略等）。
+2.  **请求中转:** 后端接收请求，注入系统生成的 `request_id` 和配置的 `apikey`，将请求转发至内部围栏服务。
+3.  **结果展示:** 前端接收围栏服务的返回结果，并根据 `final_decision.score` 进行可视化展示。
+
+#### 2. 技术细节
+
+*   **后端转发服务:**
+    *   **目标地址:** `http://127.0.0.1:8000/api/input/instance/rule/run` (POST)
+    *   **API Key:** 在后端配置中存储（可随机生成用于测试），不对前端暴露。
+    *   **Request ID:** 后端自动生成 UUID。
+
+*   **前端界面 (UI/UX):**
+    *   **输入区:**
+        *   **场景选择:** 下拉框列出当前系统中的所有 Scenario (`app_id`)。
+        *   **Prompt 输入:** 多行文本框。
+        *   **参数开关 (Switches):**
+            *   `use_customize_white` (自定义白名单)
+            *   `use_customize_words` (自定义敏感词)
+            *   `use_customize_rule` (自定义规则)
+            *   `use_vip_black` (VIP黑名单)
+            *   `use_vip_white` (VIP白名单)
+    *   **结果展示区:**
+        *   **决策可视化:** 根据 `final_decision.score` 显示不同颜色/状态：
+            *   `0`: **通过 (Pass)** - 绿色
+            *   `50`: **改写 (Rewrite)** - 黄色
+            *   `100`: **拒答 (Block)** - 红色
+            *   `1000`: **转人工 (Manual Review)** - 橙色/紫色
+        *   **详细信息:** 展示 `all_decision_dict` 或原始 JSON 以供调试。
+
+#### 3. 数据交互
+
+**前端 -> 后端 (`POST /api/v1/playground/input`):**
+```json
+{
+  "app_id": "selected_scenario_id",
+  "input_prompt": "user input...",
+  "use_customize_white": true,
+  "use_customize_words": true,
+  "use_vip_black": false,
+  "use_vip_white": false,
+  "use_customize_rule": false
+}
+```
+
+**后端 -> 围栏服务 (Proxy):**
+```json
+{
+  "request_id": "uuid-gen-by-backend",
+  "app_id": "...",
+  "apikey": "configured-api-key",
+  "input_prompt": "...",
+  ... // 其他参数透传
+}
+```
+
+**后端 -> 前端 (Response):**
+直接透传围栏服务的 JSON 响应，或进行必要的字段封装。
+
+
+### 2.6.2 输出试验场
+需求待定
+### 2.6.3 全流程试验场
+需求待定
+
+## 2.7 试验场历史记录 (Playground History)
+**目标:** 记录各类试验场（输入、输出、全流程）的每一次交互数据，并提供历史查询功能。鉴于试验场包含多种类型（目前已有输入试验场，未来将扩展输出和全流程），历史记录模块需具备高扩展性以适配不同类型的输入输出结构。
+
+#### 1. 数据模型 (`PlaygroundHistory`)
+*   `id`: UUID, 主键。
+*   `request_id`: UUID, 交互唯一标识，关联后端的日志或追踪ID。
+*   `playground_type`: String, **[关键扩展字段]** 用于区分试验场类型。枚举值:
+    *   `INPUT`: 输入试验场
+    *   `OUTPUT`: 输出试验场
+    *   `FULL`: 全流程试验场
+*   `app_id`: String, 场景标识 (Scenario ID)。
+*   `input_data`: JSON, **[通用化存储]** 存储请求参数。
+    *   对于 *Input Playground*，存储 `{ "input_prompt": "..." }`。
+    *   未来支持复杂结构的输入。
+*   `config_snapshot`: JSON, 记录请求时的配置快照 (如 `use_vip_black`, `use_customize_white` 等开关状态)，便于回溯当时的策略环境。
+*   `output_data`: JSON, **[通用化存储]** 完整记录围栏服务的响应结果 (`all_decision_dict` 等)。若发生错误，记录错误详情。
+*   `score`: Integer, 提取核心风险分数 (如 `final_decision.score`)。若发生异常，可设为 -1。
+*   `latency`: Integer, **[新增]** 总请求耗时 (毫秒)，指后端接收请求到处理完成的时间。
+*   `upstream_latency`: Integer, **[新增]** 上游服务耗时 (毫秒)，指后端调用围栏服务 (Guardrail Service) 的实际耗时。
+*   `created_at`: DateTime, 创建时间。
+
+#### 2. 接口规划
+*   **写入 (集成在各业务接口):**
+    *   修改 `POST /api/v1/playground/input`: 
+        *   记录**总开始时间**。
+        *   在调用围栏服务前，记录**上游开始时间**。
+        *   获取围栏服务响应（或捕获异常），记录**上游结束时间**，计算 `upstream_latency`。
+        *   记录**总结束时间**，计算 `latency`。
+        *   无论成功失败，尝试写入 `PlaygroundHistory`。
+    *   未来 Output/Full 接口同理。
+*   **查询 (`GET /api/v1/playground/history`):**
+    *   **参数:**
+        *   `page`: 页码
+        *   `size`: 每页条数
+        *   `playground_type`: (必填或可选) 筛选特定类型的历史。
+        *   `app_id`: (可选) 筛选特定应用。
+        *   `start_time` / `end_time`: (可选) 时间范围。
+    *   **返回:** 分页的历史记录列表，包含摘要信息及 `latency`, `upstream_latency`。
+
+#### 3. 前端交互
+*   **History 组件:**
+    *   在 `InputPlayground` (及未来页面) 增加 "History" 按钮。
+    *   点击滑出侧边栏 (Drawer)，自动传递当前页面的 `playground_type` 进行查询。
+*   **列表展示:**
+    *   显示时间、App ID、摘要 (Input Preview)、结果状态 (Tag/Color)、**总耗时 (ms)**。
+    *   错误状态需有明显标识 (如红色 Error Tag)。
+*   **功能操作:**
+    *   **查看详情:** 展开查看完整的 Request/Response JSON，以及**耗时详情 (Total vs Upstream)**。
+    *   **回填/复用 (Restore):** 点击某条记录，将历史的 `input_data` 和 `config_snapshot` 重新填充到当前页面的表单中，以便快速重测。
+
 ## 3. 非功能性需求
 *   **架构:** 前后端分离。
     *   **前端:** 建议使用 React/Vue + Ant Design/Element Plus 等组件库构建管理后台。

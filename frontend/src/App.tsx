@@ -8,13 +8,15 @@ import {
   AppstoreOutlined,
   LoginOutlined,
   SafetyCertificateOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  ExperimentOutlined
 } from '@ant-design/icons';
 import MetaTagsPage from './pages/MetaTags';
 import GlobalKeywordsPage from './pages/GlobalKeywords';
 import GlobalPoliciesPage from './pages/GlobalPolicies';
 import ScenarioKeywordsPage from './pages/ScenarioKeywords';
 import ScenarioPoliciesPage from './pages/ScenarioPolicies';
+import InputPlaygroundPage from './pages/InputPlayground';
 import AppsPage from './pages/Apps';
 import AppDashboard from './pages/AppDashboard';
 import LoginPage from './pages/LoginPage';
@@ -102,6 +104,17 @@ const AppLayout: React.FC = () => {
             key: '/global-policies',
             icon: <SafetyCertificateOutlined />,
             label: <Link to="/global-policies">全局默认规则</Link>,
+        },
+      ]
+    },
+    {
+      type: 'group',
+      label: '测试工具',
+      children: [
+        {
+          key: '/playground',
+          icon: <ExperimentOutlined />,
+          label: <Link to="/playground">输入试验场</Link>,
         },
       ]
     }
@@ -197,6 +210,7 @@ const AppLayout: React.FC = () => {
               <Route path="/tags" element={<MetaTagsPage />} />
               <Route path="/global-keywords" element={<GlobalKeywordsPage />} />
               <Route path="/global-policies" element={<GlobalPoliciesPage />} />
+              <Route path="/playground" element={<InputPlaygroundPage />} />
             </Routes>
           </div>
         </Content>

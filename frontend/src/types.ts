@@ -54,3 +54,39 @@ export interface ScenarioApp {
   enable_blacklist: boolean;
   enable_custom_policy: boolean;
 }
+
+export interface PlaygroundRequest {
+  app_id: string;
+  input_prompt: string;
+  use_customize_white: boolean;
+  use_customize_words: boolean;
+  use_customize_rule: boolean;
+  use_vip_black: boolean;
+  use_vip_white: boolean;
+}
+
+export interface PlaygroundResponse {
+  all_decision_dict?: Record<string, any>;
+  final_decision?: {
+    priority: number;
+    score: number;
+  };
+  [key: string]: any;
+}
+
+export interface PlaygroundHistory {
+  id: string;
+  request_id: string;
+  playground_type: string;
+  app_id: string;
+  input_data: {
+    input_prompt: string;
+    [key: string]: any;
+  };
+  config_snapshot: Record<string, any>;
+  output_data: any;
+  score: number;
+  latency?: number;
+  upstream_latency?: number;
+  created_at: string;
+}

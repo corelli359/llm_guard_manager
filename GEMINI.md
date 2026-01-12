@@ -99,6 +99,17 @@ The project includes a `run_docker.sh` script to run the application using Docke
 
 ## Updates Log
 
+### 2026-01-12
+*   **New Feature - Input Playground (Requirement 2.6.1):**
+    *   **Frontend:** Added `InputPlayground.tsx`.
+        *   Interactive interface for testing guardrail policies.
+        *   Supports scenario selection (`app_id`), text input, and configuration switches (White/Blacklists, Custom Rules).
+        *   Visualizes results with color-coded scores (Pass, Rewrite, Block, Manual Review).
+    *   **Backend:** Added `Playground` module.
+        *   **Schema:** Defined `InputPrompt` schema in `app/schemas/playground.py` for request validation.
+        *   **API:** Implemented `POST /api/v1/playground/input` in `app/api/v1/endpoints/playground.py`.
+        *   **Logic:** Acts as a proxy, forwarding requests to the internal guardrail service (`http://127.0.0.1:8000/api/input/instance/rule/run`), injecting `request_id` and handling the response.
+
 ### 2026-01-11
 *   **Frontend - ScenarioPolicies Enhancement:**
     *   Improved `ScenarioPolicies.tsx` to support dynamic tag selection.
@@ -117,6 +128,15 @@ The project includes a `run_docker.sh` script to run the application using Docke
     *   Enhanced `handleOk` methods to catch API errors and display detailed error messages (e.g., duplicate entry warnings) returned by the backend using `error.response.data.detail`.
     *   **Navigation Fix:** Updated `AppDashboard.tsx` to use explicit `navigate('/apps')` instead of `window.history.back()`. This resolves the navigation loop issue where users could get stuck between the Dashboard and sub-pages (Keywords/Policies) when using the "Back" buttons.
 
-
-
-
+### 2026-01-12 (Cont.)
+*   **New Feature - Playground History (Requirement 2.7):**
+    *   **Backend:**
+        *   **Model:** Added `PlaygroundHistory` model in `app/models/db_meta.py` to store interaction logs (`input_data`, `config_snapshot`, `output_data`, `score`, `playground_type`).
+        *   **Repository:** Created `PlaygroundHistoryRepository` for DB operations.
+        *   **Service:** Updated `PlaygroundService` to save history records asynchronously after each successful playground run. Fixed ID generation issue by explicitly creating UUIDs.
+        *   **API:** Added `GET /api/v1/playground/history` endpoint with filtering by `playground_type` and pagination support.
+    *   **Frontend:**
+        *   **History Drawer:** Added a "History" button in `InputPlayground.tsx` that opens a drawer listing past interactions.
+        *   **Restore Functionality:** Users can click a "Restore" button to reload a previous configuration and input prompt into the form.
+        *   **Detail View:** Added a "View Details" modal to inspect full JSON payloads (Input, Config, Output) for deep debugging.
+        *   **Visuals:** Added score color coding and formatted timestamps in the history list.

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MetaTag, GlobalKeyword, ScenarioKeyword, RuleScenarioPolicy, ScenarioApp } from './types';
+import { MetaTag, GlobalKeyword, ScenarioKeyword, RuleScenarioPolicy, ScenarioApp, PlaygroundHistory } from './types';
 
 const api = axios.create({
   baseURL: '/api/v1', // Vite proxy will handle this
@@ -60,6 +60,12 @@ export const scenariosApi = {
   create: (data: Omit<ScenarioApp, 'id'>) => api.post<ScenarioApp>('/apps/', data),
   update: (id: string, data: Partial<ScenarioApp>) => api.put<ScenarioApp>(`/apps/${id}`, data),
   delete: (id: string) => api.delete<ScenarioApp>(`/apps/${id}`),
+};
+
+export const playgroundApi = {
+  testInput: (data: import('./types').PlaygroundRequest) => api.post<import('./types').PlaygroundResponse>('/playground/input', data),
+  getHistory: (params: { page?: number; size?: number; playground_type?: string; app_id?: string }) => 
+    api.get<PlaygroundHistory[]>('/playground/history', { params }),
 };
 
 export default api;

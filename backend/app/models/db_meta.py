@@ -1,5 +1,6 @@
-from typing import Optional
-from sqlalchemy import String, Integer, Boolean, CHAR, Text
+from typing import Optional, Any
+from sqlalchemy import String, Integer, Boolean, CHAR, Text, JSON, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -88,3 +89,22 @@ class RuleGlobalDefaults(Base):
     extra_condition: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     strategy: Mapped[str] = mapped_column(String(32))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class PlaygroundHistory(Base):
+    __tablename__ = "playground_history"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(64), index=True)
+    playground_type: Mapped[str] = mapped_column(String(32), index=True)  # INPUT, OUTPUT, FULL
+    app_id: Mapped[str] = mapped_column(String(64), index=True)
+    
+    # 使用 JSON 类型存储
+    input_data: Mapped[Any] = mapped_column(JSON)
+    config_snapshot: Mapped[Any] = mapped_column(JSON)
+    output_data: Mapped[Any] = mapped_column(JSON)
+    
+    score: Mapped[int] = mapped_column(Integer, default=0)
+    latency: Mapped[int] = mapped_column(Integer, nullable=True, comment="总请求耗时(ms)")
+    upstream_latency: Mapped[int] = mapped_column(Integer, nullable=True, comment="上游服务耗时(ms)")
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
