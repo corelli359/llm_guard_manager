@@ -60,6 +60,7 @@ class ScenarioKeywords(Base):
     scenario_id: Mapped[str] = mapped_column(String(64), index=True)
     keyword: Mapped[str] = mapped_column(String(255))
     tag_code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    rule_mode: Mapped[int] = mapped_column(Integer, default=1, comment="0:Super, 1:Custom")
     risk_level: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     category: Mapped[int] = mapped_column(

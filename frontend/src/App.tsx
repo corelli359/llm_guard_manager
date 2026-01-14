@@ -134,14 +134,9 @@ const AppLayout: React.FC = () => {
                 label: <Link to={`/apps/${selectedAppId}`}>应用概览</Link>,
             },
             {
-                key: `/apps/${selectedAppId}/keywords`,
-                icon: <FileTextOutlined />,
-                label: <Link to={`/apps/${selectedAppId}/keywords`}>场景关键词</Link>,
-            },
-            {
                 key: `/apps/${selectedAppId}/policies`,
                 icon: <SafetyCertificateOutlined />,
-                label: <Link to={`/apps/${selectedAppId}/policies`}>场景策略</Link>,
+                label: <Link to={`/apps/${selectedAppId}/policies`}>场景策略管理</Link>,
             },
           ]
       });

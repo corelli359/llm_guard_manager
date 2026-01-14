@@ -20,6 +20,7 @@ export interface ScenarioKeyword {
   scenario_id: string;
   keyword: string;
   tag_code?: string;
+  rule_mode: number; // 0: Super, 1: Custom
   risk_level?: string;
   is_active: boolean;
   category: number; // 0: White, 1: Black

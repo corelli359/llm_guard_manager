@@ -34,7 +34,7 @@ export const globalKeywordsApi = {
 };
 
 export const scenarioKeywordsApi = {
-  getByScenario: (scenarioId: string) => api.get<ScenarioKeyword[]>(`/keywords/scenario/${scenarioId}`),
+  getByScenario: (scenarioId: string, ruleMode?: number) => api.get<ScenarioKeyword[]>(`/keywords/scenario/${scenarioId}`, { params: { rule_mode: ruleMode } }),
   create: (data: Omit<ScenarioKeyword, 'id'>) => api.post<ScenarioKeyword>('/keywords/scenario/', data),
   update: (id: string, data: Partial<ScenarioKeyword>) => api.put<ScenarioKeyword>(`/keywords/scenario/${id}`, data),
   delete: (id: string) => api.delete<ScenarioKeyword>(`/keywords/scenario/${id}`),

@@ -11,11 +11,12 @@ router = APIRouter()
 @router.get("/{scenario_id}", response_model=List[ScenarioKeywordsResponse])
 async def read_scenario_keywords(
     scenario_id: str,
+    rule_mode: int = None,
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ) -> Any:
     service = ScenarioKeywordsService(db)
-    return await service.get_by_scenario(scenario_id)
+    return await service.get_by_scenario(scenario_id, rule_mode)
 
 @router.post("/", response_model=ScenarioKeywordsResponse)
 async def create_scenario_keyword(

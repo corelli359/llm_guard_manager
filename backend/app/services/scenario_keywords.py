@@ -10,17 +10,22 @@ class ScenarioKeywordsService:
         self.repository = ScenarioKeywordsRepository(ScenarioKeywords, db)
 
     async def create_keyword(self, keyword_in: ScenarioKeywordsCreate) -> ScenarioKeywords:
-        # Check for duplicates in the same scenario
-        existing = await self.repository.get_by_scenario_and_keyword(keyword_in.scenario_id, keyword_in.keyword)
+        # Check for duplicates in the same scenario and rule_mode
+        existing = await self.repository.get_duplicate(
+            keyword_in.scenario_id, 
+            keyword_in.keyword,
+            keyword_in.rule_mode
+        )
         if existing:
-            raise ValueError(f"Keyword '{keyword_in.keyword}' already exists in scenario '{keyword_in.scenario_id}' (Category: {existing.category}).")
+            mode_str = "Custom Mode" if keyword_in.rule_mode == 1 else "Super Mode"
+            raise ValueError(f"Keyword '{keyword_in.keyword}' already exists in scenario '{keyword_in.scenario_id}' for {mode_str}.")
 
         obj_in_data = keyword_in.model_dump()
         obj_in_data['id'] = str(uuid.uuid4())
         return await self.repository.create(obj_in_data)
 
-    async def get_by_scenario(self, scenario_id: str) -> List[ScenarioKeywords]:
-        return await self.repository.get_by_scenario(scenario_id)
+    async def get_by_scenario(self, scenario_id: str, rule_mode: Optional[int] = None) -> List[ScenarioKeywords]:
+        return await self.repository.get_by_scenario(scenario_id, rule_mode)
 
     async def get_keyword(self, keyword_id: str) -> Optional[ScenarioKeywords]:
         return await self.repository.get(keyword_id)

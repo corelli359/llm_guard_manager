@@ -1,5 +1,6 @@
 # LLM Guard Manager - Project Context
-
+# 第一原则，所有输出，请用中文作答。
+# 第二原则，绝对不允许删除数据库里面的数据！
 ## Project Overview
 
 **LLM Guard Manager** is a full-stack visualization platform designed to manage security and compliance policies for Large Language Model (LLM) applications. It enables administrators to configure:

@@ -49,43 +49,34 @@ const AppDashboard: React.FC = () => {
 
       <h3 style={{ marginTop: 24 }}>功能模块配置</h3>
       <Row gutter={[16, 16]}>
-        <Col span={8}>
+        <Col span={24}>
           <Card 
-            title="敏感词黑名单" 
-            actions={[<Link to={`/apps/${appData.app_id}/keywords?category=1`}>管理黑名单</Link>]}
+            title="场景策略配置" 
+            extra={<Link to={`/apps/${appData.app_id}/policies`}><Button type="primary">进入配置</Button></Link>}
           >
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                <AlertOutlined style={{ fontSize: 32, color: appData.enable_blacklist ? '#ff4d4f' : '#d9d9d9' }} />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-                状态: {appData.enable_blacklist ? <Tag color="green">已启用</Tag> : <Tag>未启用</Tag>}
-            </div>
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card 
-            title="敏感词白名单" 
-            actions={[<Link to={`/apps/${appData.app_id}/keywords?category=0`}>管理白名单</Link>]}
-          >
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                <CheckCircleOutlined style={{ fontSize: 32, color: appData.enable_whitelist ? '#52c41a' : '#d9d9d9' }} />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-                状态: {appData.enable_whitelist ? <Tag color="green">已启用</Tag> : <Tag>未启用</Tag>}
-            </div>
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card 
-            title="自定义处置策略" 
-            actions={[<Link to={`/apps/${appData.app_id}/policies`}>管理策略规则</Link>]}
-          >
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                <SafetyCertificateOutlined style={{ fontSize: 32, color: appData.enable_custom_policy ? '#1890ff' : '#d9d9d9' }} />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-                状态: {appData.enable_custom_policy ? <Tag color="green">已启用</Tag> : <Tag>未启用</Tag>}
-            </div>
+            <Row gutter={16} style={{ textAlign: 'center' }}>
+              <Col span={8}>
+                <div style={{ marginBottom: 8 }}>
+                   <AlertOutlined style={{ fontSize: 24, color: appData.enable_blacklist ? '#ff4d4f' : '#d9d9d9' }} />
+                   <div style={{ marginTop: 8 }}>敏感词黑名单</div>
+                </div>
+                <Tag color={appData.enable_blacklist ? "green" : "default"}>{appData.enable_blacklist ? "已启用" : "未启用"}</Tag>
+              </Col>
+              <Col span={8}>
+                <div style={{ marginBottom: 8 }}>
+                   <CheckCircleOutlined style={{ fontSize: 24, color: appData.enable_whitelist ? '#52c41a' : '#d9d9d9' }} />
+                   <div style={{ marginTop: 8 }}>敏感词白名单</div>
+                </div>
+                <Tag color={appData.enable_whitelist ? "green" : "default"}>{appData.enable_whitelist ? "已启用" : "未启用"}</Tag>
+              </Col>
+              <Col span={8}>
+                <div style={{ marginBottom: 8 }}>
+                   <SafetyCertificateOutlined style={{ fontSize: 24, color: appData.enable_custom_policy ? '#1890ff' : '#d9d9d9' }} />
+                   <div style={{ marginTop: 8 }}>自定义规则</div>
+                </div>
+                <Tag color={appData.enable_custom_policy ? "green" : "default"}>{appData.enable_custom_policy ? "已启用" : "未启用"}</Tag>
+              </Col>
+            </Row>
           </Card>
         </Col>
       </Row>
