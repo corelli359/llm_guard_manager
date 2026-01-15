@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MetaTag, GlobalKeyword, ScenarioKeyword, RuleScenarioPolicy, ScenarioApp, PlaygroundHistory } from './types';
+import { MetaTag, GlobalKeyword, ScenarioKeyword, RuleScenarioPolicy, ScenarioApp } from './types';
 
 const api = axios.create({
   baseURL: '/api/v1', // Vite proxy will handle this
@@ -63,9 +63,24 @@ export const scenariosApi = {
 };
 
 export const playgroundApi = {
-  testInput: (data: import('./types').PlaygroundRequest) => api.post<import('./types').PlaygroundResponse>('/playground/input', data),
-  getHistory: (params: { page?: number; size?: number; playground_type?: string; app_id?: string }) => 
-    api.get<PlaygroundHistory[]>('/playground/history', { params }),
+  testInput: (data: any) => api.post('/playground/input', data),
+  getHistory: (params: { page?: number; size?: number; playground_type?: string; app_id?: string }) => {
+      const { page = 1, size = 20, playground_type, app_id } = params;
+      let url = `/playground/history?page=${page}&size=${size}`;
+      if (playground_type) url += `&playground_type=${playground_type}`;
+      if (app_id) url += `&app_id=${app_id}`;
+      return api.get(url);
+  },
+};
+
+export const performanceApi = {
+    dryRun: (config: any) => api.post('/performance/dry-run', config),
+    start: (data: any) => api.post('/performance/start', data),
+    stop: () => api.post('/performance/stop'),
+    getStatus: () => api.get('/performance/status'),
+    getHistoryList: () => api.get('/performance/history'),
+    getHistoryDetail: (id: string) => api.get(`/performance/history/${id}`),
+    deleteHistory: (id: string) => api.delete(`/performance/history/${id}`),
 };
 
 export default api;

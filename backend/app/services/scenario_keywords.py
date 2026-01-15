@@ -10,6 +10,10 @@ class ScenarioKeywordsService:
         self.repository = ScenarioKeywordsRepository(ScenarioKeywords, db)
 
     async def create_keyword(self, keyword_in: ScenarioKeywordsCreate) -> ScenarioKeywords:
+        # Validate that tag_code is required for both Blacklist and Whitelist
+        if not keyword_in.tag_code:
+             raise ValueError("Tag Code is required for all keywords.")
+
         # Check for duplicates in the same scenario and rule_mode
         existing = await self.repository.get_duplicate(
             keyword_in.scenario_id, 
@@ -34,6 +38,13 @@ class ScenarioKeywordsService:
         keyword = await self.repository.get(keyword_id)
         if not keyword:
             raise ValueError("Keyword not found")
+
+        # Determine the final state
+        new_tag_code = keyword_in.tag_code if keyword_in.tag_code is not None else keyword.tag_code
+        
+        if not new_tag_code:
+             raise ValueError("Tag Code is required for all keywords.")
+
         return await self.repository.update(keyword, keyword_in)
 
     async def delete_keyword(self, keyword_id: str) -> Optional[ScenarioKeywords]:

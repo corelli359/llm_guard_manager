@@ -41,7 +41,10 @@ async def update_scenario_keyword(
     try:
         return await service.update_keyword(keyword_id, keyword_in)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        msg = str(e)
+        if "not found" in msg:
+             raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
 
 @router.delete("/{keyword_id}", response_model=ScenarioKeywordsResponse)
 async def delete_scenario_keyword(

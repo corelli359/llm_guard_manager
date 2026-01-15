@@ -20,7 +20,7 @@ const ScenarioKeywordsPage: React.FC = () => {
   const [currentScenarioId, setCurrentScenarioId] = useState<string>('');
   const [searchScenarioId, setSearchScenarioId] = useState<string>('');
   const [form] = Form.useForm();
-
+  
   // Initial load from URL
   useEffect(() => {
     if (appId) {
@@ -245,7 +245,11 @@ const ScenarioKeywordsPage: React.FC = () => {
               <Select.Option value={0}>白名单 (Allow)</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="tag_code" label="关联标签 (Tag Code)">
+          <Form.Item 
+            name="tag_code" 
+            label="关联标签 (Tag Code)"
+            rules={[{ required: true, message: '必须选择标签' }]}
+          >
             <Select placeholder="请选择标签" showSearch optionFilterProp="children" allowClear>
               {tags.map(tag => (
                 <Option key={tag.tag_code} value={tag.tag_code}>{tag.tag_name} ({tag.tag_code})</Option>

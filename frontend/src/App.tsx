@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { Layout, Menu, theme, Select } from 'antd';
 import {
+  ExperimentOutlined,
+  AppstoreOutlined,
   TagsOutlined,
   GlobalOutlined,
-  DashboardOutlined,
-  AppstoreOutlined,
-  LoginOutlined,
   SafetyCertificateOutlined,
-  FileTextOutlined,
-  ExperimentOutlined
+  DashboardOutlined,
+  LoginOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import MetaTagsPage from './pages/MetaTags';
 import GlobalKeywordsPage from './pages/GlobalKeywords';
@@ -17,6 +17,7 @@ import GlobalPoliciesPage from './pages/GlobalPolicies';
 import ScenarioKeywordsPage from './pages/ScenarioKeywords';
 import ScenarioPoliciesPage from './pages/ScenarioPolicies';
 import InputPlaygroundPage from './pages/InputPlayground';
+import PerformanceTestPage from './pages/PerformanceTest';
 import AppsPage from './pages/Apps';
 import AppDashboard from './pages/AppDashboard';
 import LoginPage from './pages/LoginPage';
@@ -116,6 +117,11 @@ const AppLayout: React.FC = () => {
           icon: <ExperimentOutlined />,
           label: <Link to="/playground">输入试验场</Link>,
         },
+        {
+          key: '/performance',
+          icon: <ThunderboltOutlined />,
+          label: <Link to="/performance">性能测试</Link>,
+        },
       ]
     }
   ];
@@ -206,6 +212,7 @@ const AppLayout: React.FC = () => {
               <Route path="/global-keywords" element={<GlobalKeywordsPage />} />
               <Route path="/global-policies" element={<GlobalPoliciesPage />} />
               <Route path="/playground" element={<InputPlaygroundPage />} />
+              <Route path="/performance" element={<PerformanceTestPage />} />
             </Routes>
           </div>
         </Content>

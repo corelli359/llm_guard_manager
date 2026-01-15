@@ -7,3 +7,4 @@ dist/
 .DS_Store
 *.zip
 backend/app/core/config.py
+performance_history/

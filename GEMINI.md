@@ -1,6 +1,8 @@
 # LLM Guard Manager - Project Context
-# 第一原则，所有输出，请用中文作答。
-# 第二原则，绝对不允许删除数据库里面的数据！
+
+## **对于系统建设的最重要的几点原则**
+* **所有输出，请用中文作答。**
+* **绝对不允许删除数据库里面的数据！**
 ## Project Overview
 
 **LLM Guard Manager** is a full-stack visualization platform designed to manage security and compliance policies for Large Language Model (LLM) applications. It enables administrators to configure:
@@ -141,3 +143,14 @@ The project includes a `run_docker.sh` script to run the application using Docke
         *   **Restore Functionality:** Users can click a "Restore" button to reload a previous configuration and input prompt into the form.
         *   **Detail View:** Added a "View Details" modal to inspect full JSON payloads (Input, Config, Output) for deep debugging.
         *   **Visuals:** Added score color coding and formatted timestamps in the history list.
+
+### 2026-01-15
+*   **Unit Tests - Expanded Coverage:**
+    *   **Playground:** Added `tests/api/v1/test_playground.py` to verify:
+        *   Input check success (mocked external service).
+        *   Input check error handling (service down).
+        *   History retrieval (`GET /history`).
+    *   **Uniqueness Constraints:** Updated `test_scenario_keywords.py` and `test_rule_policy.py` to verify backend rejection of duplicate entries for:
+        *   Scenario Keywords.
+        *   Scenario Policies.
+        *   Global Default Policies.
