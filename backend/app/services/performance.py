@@ -6,9 +6,10 @@ import secrets
 import json
 import os
 import shutil
+import numpy as np
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from app.schemas.performance import PerformanceTestStartRequest, TestType, GuardrailConfig, PerformanceHistoryMeta, PerformanceHistoryDetail
+from app.schemas.performance import PerformanceTestStartRequest, TestType, GuardrailConfig, PerformanceHistoryMeta, PerformanceHistoryDetail, PerformanceAnalysis
 
 GUARDRAIL_SERVICE_URL = "http://127.0.0.1:8000/api/input/instance/rule/run"
 HISTORY_DIR = "performance_history"
@@ -29,6 +30,8 @@ class LoadRunner:
         # Tracking last valid metrics
         self.last_rps = 0.0
         self.last_error_rps = 0.0
+        self.last_p95 = 0.0
+        self.last_p99 = 0.0
         
         if not os.path.exists(HISTORY_DIR):
             os.makedirs(HISTORY_DIR)
@@ -43,7 +46,8 @@ class LoadRunner:
             "start_ts": time.time(),
             "window_requests": 0,
             "window_errors": 0, # Added for Error RPS
-            "window_start": time.time()
+            "window_start": time.time(),
+            "window_latencies": [] # For percentile calculation
         }
 
     async def dry_run(self, config: GuardrailConfig) -> Dict[str, Any]:
@@ -90,6 +94,8 @@ class LoadRunner:
         self.test_id = str(uuid.uuid4())
         self.last_rps = 0.0
         self.last_error_rps = 0.0
+        self.last_p95 = 0.0
+        self.last_p99 = 0.0
 
         try:
             if request.test_type == TestType.FATIGUE:
@@ -109,7 +115,7 @@ class LoadRunner:
             self.running = False
             self.end_time = time.time()
             self.stop_event.set()
-            self._snapshot_history(time.time(), self.last_rps, self.last_error_rps)
+            self._snapshot_history(time.time(), self.last_rps, self.last_error_rps, self.last_p95, self.last_p99)
             self._save_history()
             self.current_users = 0
 
@@ -131,18 +137,31 @@ class LoadRunner:
         
         rps = self.last_rps
         error_rps = self.last_error_rps
+        p95 = self.last_p95
+        p99 = self.last_p99
         
         if window_duration >= 1.0:
             rps = self.stats["window_requests"] / window_duration
             error_rps = self.stats["window_errors"] / window_duration
             
+            latencies = self.stats["window_latencies"]
+            if latencies:
+                p95 = np.percentile(latencies, 95)
+                p99 = np.percentile(latencies, 99)
+            else:
+                p95 = 0.0
+                p99 = 0.0
+
             self.last_rps = rps
             self.last_error_rps = error_rps
+            self.last_p95 = p95
+            self.last_p99 = p99
             
-            self._snapshot_history(now, rps, error_rps)
+            self._snapshot_history(now, rps, error_rps, p95, p99)
             self.stats["window_start"] = now
             self.stats["window_requests"] = 0
             self.stats["window_errors"] = 0
+            self.stats["window_latencies"] = [] # Reset window latencies
         
         avg_lat = 0.0
         # Only use successful latency count
@@ -158,10 +177,12 @@ class LoadRunner:
             "error_requests": self.stats["error"],
             "current_rps": round(rps, 2),
             "avg_latency": round(avg_lat, 2),
+            "p95_latency": round(p95, 2),
+            "p99_latency": round(p99, 2),
             "history": self.history_buffer[-60:]
         }
 
-    def _snapshot_history(self, timestamp, rps, error_rps):
+    def _snapshot_history(self, timestamp, rps, error_rps, p95, p99):
         avg_lat = 0.0
         if self.stats["latency_count"] > 0:
             avg_lat = (self.stats["latency_sum"] / self.stats["latency_count"]) * 1000
@@ -169,8 +190,10 @@ class LoadRunner:
         point = {
             "timestamp": int(timestamp),
             "rps": round(rps, 2),
-            "error_rps": round(error_rps, 2), # New field
+            "error_rps": round(error_rps, 2),
             "latency": round(avg_lat, 2),
+            "p95_latency": round(p95, 2),
+            "p99_latency": round(p99, 2),
             "users": self.current_users
         }
         self.history_buffer.append(point)
@@ -192,6 +215,7 @@ class LoadRunner:
                         # Only add latency for success
                         self.stats["latency_sum"] += duration
                         self.stats["latency_count"] += 1
+                        self.stats["window_latencies"].append(duration * 1000) # Store in ms
                     else:
                         self.stats["error"] += 1
                         self.stats["window_errors"] += 1
@@ -235,6 +259,79 @@ class LoadRunner:
             
         self.stop_event.set()
         await asyncio.gather(*workers)
+
+    def _analyze_results(self, stats: Dict[str, Any], history: List[Dict[str, Any]]) -> PerformanceAnalysis:
+        if not history:
+            return PerformanceAnalysis(score=0, conclusion="未收集到有效测试数据。", suggestions=["请检查网络连接或服务状态。"])
+
+        max_users = max(h["users"] for h in history)
+        max_rps = max(h["rps"] for h in history)
+        
+        # 提取所有点的 P99 延迟
+        p99_values = [(h.get("p99_latency") or 0.0) for h in history]
+        max_p99 = max(p99_values)
+        avg_p99 = sum(p99_values) / len(p99_values) if p99_values else 0.0
+
+        total_reqs = stats["total_requests"]
+        error_reqs = stats["error_requests"]
+        error_rate = (error_reqs / total_reqs) * 100 if total_reqs > 0 else 0
+
+        score = 100
+        suggestions = []
+        
+        # 1. 错误率分析
+        if error_rate > 1.0:
+            score -= 40
+            suggestions.append(f"错误率过高: {error_rate:.2f}% 的请求失败。请立即检查服务端日志及错误堆栈。")
+        elif error_rate > 0:
+            score -= 10
+            suggestions.append(f"存在少量错误: 观察到 {error_rate:.2f}% 的失败率，需排查偶发性问题。")
+        
+        # 2. 延迟峰值分析
+        if max_p99 > 2000:
+            score -= 30
+            suggestions.append(f"严重延迟: P99 响应时间峰值达到 {max_p99:.0f}ms，超过 2秒，用户体验受损严重。")
+        elif max_p99 > 1000:
+            score -= 10
+            suggestions.append(f"延迟较高: P99 响应时间峰值达到 {max_p99:.0f}ms，超过 1秒。")
+
+        # 3. 毛刺 (Spike) 检测 / 抖动分析
+        # 定义毛刺: 某时刻 P99 > 平均 P99 的 2 倍，且绝对值超过 50ms (忽略极低延迟下的波动)
+        spike_count = sum(1 for v in p99_values if v > max(avg_p99 * 2, 50))
+        if spike_count > 0:
+            score -= 5 * min(spike_count, 4) # 最多扣 20 分
+            suggestions.append(f"发现延迟毛刺: 检测到 {spike_count} 次明显的延迟激增现象，系统性能存在抖动。")
+
+        # 4. 瓶颈检测 (仅针对阶梯测试)
+        if self._test_config and self._test_config.test_type == TestType.STEP:
+            # 简单启发式: 检查最后阶段 RPS 是否随用户数增加而线性增长
+            # 取后 20% 的数据
+            tail_len = max(1, len(history) // 5)
+            tail_data = history[-tail_len:]
+            if len(tail_data) > 1:
+                users_growth = tail_data[-1]["users"] - tail_data[0]["users"]
+                rps_growth = tail_data[-1]["rps"] - tail_data[0]["rps"]
+                # 如果用户增加了但 RPS 没怎么涨 (甚至跌了)，且 RPS 本身已经有一定规模
+                if users_growth > 0 and rps_growth <= 0 and tail_data[0]["rps"] > 10:
+                     suggestions.append("疑似达到吞吐量瓶颈: 测试末期并发用户增加但 RPS 未增长，建议检查系统资源 (CPU/DB) 限制。")
+
+        if score == 100:
+            suggestions.append("完美表现: 系统在当前测试压力下运行极其稳定，无错误且延迟低。")
+        elif score >= 90:
+             suggestions.append("表现优秀: 系统性能整体稳定，各项指标在可接受范围内。")
+
+        conclusion = (
+            f"本次测试共模拟峰值 {max_users} 个虚拟用户。 "
+            f"系统最大吞吐量达到 {max_rps:.1f} RPS。 "
+            f"P99 延迟峰值为 {max_p99:.1f} ms，平均 P99 为 {avg_p99:.1f} ms。 "
+            f"累计处理请求 {total_reqs} 个，其中失败 {error_reqs} 个。"
+        )
+
+        return PerformanceAnalysis(
+            score=max(0, score),
+            conclusion=conclusion,
+            suggestions=suggestions
+        )
 
     def _save_history(self):
         if not self.test_id or not self._target_config:
@@ -283,6 +380,11 @@ class LoadRunner:
 
         with open(os.path.join(test_dir, "history.json"), "w") as f:
             json.dump(self.history_buffer, f)
+            
+        # Analysis
+        analysis = self._analyze_results(final_stats, self.history_buffer)
+        with open(os.path.join(test_dir, "analysis.json"), "w") as f:
+            json.dump(analysis.model_dump(), f, indent=2)
 
     def get_history_list(self) -> List[PerformanceHistoryMeta]:
         results = []
@@ -315,12 +417,19 @@ class LoadRunner:
                 stats = json.load(f)
             with open(os.path.join(test_dir, "history.json")) as f:
                 history = json.load(f)
+            
+            analysis = None
+            analysis_path = os.path.join(test_dir, "analysis.json")
+            if os.path.exists(analysis_path):
+                with open(analysis_path) as f:
+                    analysis = json.load(f)
                 
             return PerformanceHistoryDetail(
                 meta=meta,
                 config=config,
                 stats=stats,
-                history=history
+                history=history,
+                analysis=analysis
             )
         except Exception as e:
             print(f"Error loading history: {e}")

@@ -109,3 +109,53 @@ class PlaygroundHistory(Base):
     latency: Mapped[int] = mapped_column(Integer, nullable=True, comment="总请求耗时(ms)")
     upstream_latency: Mapped[int] = mapped_column(Integer, nullable=True, comment="上游服务耗时(ms)")
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(128))
+    role: Mapped[str] = mapped_column(String(32), default="AUDITOR") # ADMIN, AUDITOR
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StagingGlobalKeywords(Base):
+    __tablename__ = "staging_global_keywords"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    keyword: Mapped[str] = mapped_column(String(255))
+    predicted_tag: Mapped[str] = mapped_column(String(64))
+    predicted_risk: Mapped[str] = mapped_column(String(32))
+    
+    final_tag: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    final_risk: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    
+    status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True) # PENDING, REVIEWED, SYNCED, IGNORED
+    is_modified: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    annotator: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    annotated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StagingGlobalRules(Base):
+    __tablename__ = "staging_global_rules"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    tag_code: Mapped[str] = mapped_column(String(64))
+    predicted_strategy: Mapped[str] = mapped_column(String(32))
+    
+    final_strategy: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    extra_condition: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    
+    status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True)
+    is_modified: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    annotator: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    annotated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())

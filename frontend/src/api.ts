@@ -83,4 +83,26 @@ export const performanceApi = {
     deleteHistory: (id: string) => api.delete(`/performance/history/${id}`),
 };
 
+export const usersApi = {
+    list: () => api.get('/users/'),
+    create: (data: any) => api.post('/users/', data),
+    updateStatus: (id: string, active: boolean) => api.patch(`/users/${id}/status`, { is_active: active }),
+    resetPassword: (id: string) => api.post(`/users/${id}/reset-password`),
+    delete: (id: string) => api.delete(`/users/${id}`),
+};
+
+export const stagingApi = {
+    listKeywords: (status?: string) => api.get(`/staging/keywords${status ? `?status=${status}` : ''}`),
+    reviewKeyword: (id: string, data: any) => api.patch(`/staging/keywords/${id}`, data),
+    deleteKeyword: (id: string) => api.delete(`/staging/keywords/${id}`),
+    syncKeywords: (ids: string[]) => api.post('/staging/keywords/sync', { ids }),
+    importMock: () => api.post('/staging/keywords/import-mock'),
+    
+    listRules: (status?: string) => api.get(`/staging/rules${status ? `?status=${status}` : ''}`),
+    reviewRule: (id: string, data: any) => api.patch(`/staging/rules/${id}`, data),
+    deleteRule: (id: string) => api.delete(`/staging/rules/${id}`),
+    syncRules: (ids: string[]) => api.post('/staging/rules/sync', { ids }),
+    importMockRules: () => api.post('/staging/rules/import-mock'),
+};
+
 export default api;

@@ -40,6 +40,8 @@ class PerformanceStatusResponse(BaseModel):
     error_requests: int = 0
     current_rps: float = 0.0
     avg_latency: float = 0.0
+    p95_latency: float = 0.0
+    p99_latency: float = 0.0
     history: List[Dict[str, Any]] = [] # Time-series data points
     error: Optional[str] = None
 
@@ -52,8 +54,14 @@ class PerformanceHistoryMeta(BaseModel):
     app_id: str
     status: str # COMPLETED, STOPPED, FAILED
 
+class PerformanceAnalysis(BaseModel):
+    score: int = 100
+    conclusion: str
+    suggestions: List[str] = []
+
 class PerformanceHistoryDetail(BaseModel):
     meta: PerformanceHistoryMeta
     config: Dict[str, Any]
     stats: Dict[str, Any]
     history: List[Dict[str, Any]]
+    analysis: Optional[PerformanceAnalysis] = None

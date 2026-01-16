@@ -10,7 +10,10 @@ from app.models.db_meta import (
     ScenarioKeywords, 
     RuleScenarioPolicy, 
     RuleGlobalDefaults,
-    PlaygroundHistory
+    PlaygroundHistory,
+    User,
+    StagingGlobalKeywords,
+    StagingGlobalRules
 )
 
 async def init_database():

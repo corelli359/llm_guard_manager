@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Form, Input, Select, Switch, Button, Row, Col, Tabs, Statistic, message, Divider, Tag, Space, Drawer, Table, Popconfirm, Descriptions, Spin } from 'antd';
+import { Card, Form, Input, Select, Switch, Button, Row, Col, Tabs, Statistic, message, Divider, Tag, Space, Drawer, Table, Popconfirm, Descriptions, Spin, Alert } from 'antd';
 import { PlayCircleOutlined, StopOutlined, ThunderboltOutlined, CheckCircleOutlined, ClockCircleOutlined, HistoryOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { scenariosApi, performanceApi } from '../api';
@@ -311,63 +311,117 @@ const PerformanceTestPage: React.FC = () => {
                 </Space>
             } bordered={false}>
                 <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={6}>
+                    <Col span={4}>
                         <Statistic title="运行时长 (s)" value={status?.duration || 0} />
                     </Col>
-                    <Col span={6}>
-                        <Statistic title="当前并发" value={status?.current_users || 0} valueStyle={{ color: '#1890ff' }} />
+                    <Col span={4}>
+                        <Statistic title="当前虚拟用户数" value={status?.current_users || 0} valueStyle={{ color: '#1890ff' }} />
                     </Col>
-                    <Col span={6}>
-                        <Statistic title="实时 RPS" value={status?.current_rps || 0} precision={1} />
+                    <Col span={4}>
+                        <Statistic title="实时 RPS (TPS)" value={status?.current_rps || 0} precision={1} />
                     </Col>
-                    <Col span={6}>
-                        <Statistic title="平均延迟 (ms)" value={status?.avg_latency || 0} precision={1} valueStyle={{ color: (status?.avg_latency || 0) > 1000 ? '#cf1322' : '#3f8600' }} />
+                    <Col span={4}>
+                        <Statistic title="Avg 响应时间 (ms)" value={status?.avg_latency || 0} precision={1} valueStyle={{ color: (status?.avg_latency || 0) > 1000 ? '#cf1322' : '#3f8600' }} />
+                    </Col>
+                    <Col span={4}>
+                        <Statistic title="P95 响应时间 (ms)" value={status?.p95_latency || 0} precision={1} valueStyle={{ color: '#faad14' }} />
+                    </Col>
+                    <Col span={4}>
+                        <Statistic title="P99 响应时间 (ms)" value={status?.p99_latency || 0} precision={1} valueStyle={{ color: '#cf1322' }} />
                     </Col>
                 </Row>
                 <Row gutter={16} style={{ marginBottom: 24 }}>
                    <Col span={8}>
-                        <Statistic title="总请求" value={status?.total_requests || 0} />
+                        <Statistic title="总请求量" value={status?.total_requests || 0} />
                    </Col>
                    <Col span={8}>
-                        <Statistic title="成功数" value={status?.success_requests || 0} valueStyle={{ color: '#3f8600' }} prefix={<CheckCircleOutlined />} />
+                        <Statistic title="成功请求数" value={status?.success_requests || 0} valueStyle={{ color: '#3f8600' }} prefix={<CheckCircleOutlined />} />
                    </Col>
                    <Col span={8}>
-                        <Statistic title="错误数" value={status?.error_requests || 0} valueStyle={{ color: '#cf1322' }} />
+                        <Statistic title="失败请求数" value={status?.error_requests || 0} valueStyle={{ color: '#cf1322' }} />
                    </Col>
                 </Row>
 
                 <Divider />
                 
-                <h4>吞吐量趋势 (RPS)</h4>
-                <div style={{ height: 200, marginBottom: 24 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="timestamp" tick={false} />
-                            <YAxis />
-                            <Tooltip labelFormatter={(t) => new Date(t*1000).toLocaleTimeString()} />
-                            <Legend />
-                            <Line type="monotone" dataKey="rps" stroke="#8884d8" name="Total RPS" isAnimationActive={false} dot={false} strokeWidth={2} />
-                            <Line type="monotone" dataKey="error_rps" stroke="#ff4d4f" name="Error RPS" isAnimationActive={false} dot={false} strokeDasharray="5 5" />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                {/* Row 1: Response Time */}
+                <Row gutter={[16, 16]}>
+                    <Col span={24}>
+                        <Card size="small" title="响应时间 (Response Time)" bordered={false}>
+                            <div style={{ height: 200 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={chartData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="timestamp" tick={false} />
+                                        <YAxis unit="ms" />
+                                        <Tooltip labelFormatter={(t) => new Date(t*1000).toLocaleTimeString()} />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="latency" stroke="#82ca9d" name="Avg 响应时间" isAnimationActive={false} dot={false} strokeWidth={2} />
+                                        <Line type="monotone" dataKey="p95_latency" stroke="#faad14" name="P95 响应时间" isAnimationActive={false} dot={false} strokeDasharray="5 5" />
+                                        <Line type="monotone" dataKey="p99_latency" stroke="#cf1322" name="P99 响应时间" isAnimationActive={false} dot={false} strokeDasharray="3 3" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </Col>
+                </Row>
 
-                <h4>并发与延迟 (Users vs Latency)</h4>
-                <div style={{ height: 200 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="timestamp" tick={false} />
-                            <YAxis yAxisId="left" />
-                            <YAxis yAxisId="right" orientation="right" />
-                            <Tooltip labelFormatter={(t) => new Date(t*1000).toLocaleTimeString()} />
-                            <Legend />
-                            <Line yAxisId="left" type="monotone" dataKey="latency" stroke="#82ca9d" name="Latency (ms)" isAnimationActive={false} dot={false} />
-                            <Line yAxisId="right" type="step" dataKey="users" stroke="#ff7300" name="Users" isAnimationActive={false} dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                {/* Row 2: Throughput Breakdown */}
+                <Row gutter={[16, 16]}>
+                    <Col span={12}>
+                        <Card size="small" title="总吞吐量 (Total Throughput)" bordered={false}>
+                            <div style={{ height: 200 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={chartData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="timestamp" tick={false} />
+                                        <YAxis />
+                                        <Tooltip labelFormatter={(t) => new Date(t*1000).toLocaleTimeString()} />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="rps" stroke="#8884d8" name="总吞吐量 (RPS)" isAnimationActive={false} dot={false} strokeWidth={2} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col span={12}>
+                        <Card size="small" title="吞吐量细分 (Throughput Breakdown)" bordered={false}>
+                            <div style={{ height: 200 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={chartData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="timestamp" tick={false} />
+                                        <YAxis />
+                                        <Tooltip labelFormatter={(t) => new Date(t*1000).toLocaleTimeString()} />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="rps" stroke="#3f8600" name="成功吞吐量" isAnimationActive={false} dot={false} strokeWidth={2} />
+                                        <Line type="monotone" dataKey="error_rps" stroke="#cf1322" name="失败吞吐量" isAnimationActive={false} dot={false} strokeWidth={2} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </Col>
+                </Row>
+
+                {/* Row 3: VUsers & Errors */}
+                <Row gutter={[16, 16]}>
+                    <Col span={24}>
+                        <Card size="small" title="虚拟用户数 (Virtual Users)" bordered={false}>
+                            <div style={{ height: 200 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={chartData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="timestamp" tick={false} />
+                                        <YAxis />
+                                        <Tooltip labelFormatter={(t) => new Date(t*1000).toLocaleTimeString()} />
+                                        <Legend />
+                                        <Line type="step" dataKey="users" stroke="#ff7300" name="虚拟用户数" isAnimationActive={false} dot={false} strokeWidth={2} fill="#ff7300" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </Col>
+                </Row>
             </Card>
         </Col>
       </Row>
@@ -416,6 +470,29 @@ const PerformanceTestPage: React.FC = () => {
       >
         {detailLoading ? <Spin /> : selectedHistory && (
             <Space direction="vertical" style={{ width: '100%' }} size="large">
+                {/* Analysis Report Section */}
+                {selectedHistory.analysis && (
+                    <Card title="智能分析报告" bordered={false} className="analysis-card">
+                        <Alert
+                            message={`综合评分: ${selectedHistory.analysis.score} 分`}
+                            description={selectedHistory.analysis.conclusion}
+                            type={selectedHistory.analysis.score >= 80 ? 'success' : (selectedHistory.analysis.score >= 60 ? 'warning' : 'error')}
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                        />
+                        {selectedHistory.analysis.suggestions.length > 0 && (
+                            <div style={{ marginTop: 12 }}>
+                                <h4>优化建议:</h4>
+                                <ul>
+                                    {selectedHistory.analysis.suggestions.map((s: string, i: number) => (
+                                        <li key={i}>{s}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </Card>
+                )}
+
                 <Descriptions title="基础信息" bordered column={2}>
                     <Descriptions.Item label="Test ID">{selectedHistory.meta.test_id}</Descriptions.Item>
                     <Descriptions.Item label="App ID">{selectedHistory.meta.app_id}</Descriptions.Item>
@@ -424,6 +501,8 @@ const PerformanceTestPage: React.FC = () => {
                     <Descriptions.Item label="Total Requests">{selectedHistory.stats.total_requests}</Descriptions.Item>
                     <Descriptions.Item label="Max RPS">{selectedHistory.stats.max_rps}</Descriptions.Item>
                     <Descriptions.Item label="Avg Latency">{selectedHistory.stats.avg_latency} ms</Descriptions.Item>
+                    <Descriptions.Item label="P95 Latency">{selectedHistory.history[selectedHistory.history.length-1]?.p95_latency || '-'} ms</Descriptions.Item>
+                    <Descriptions.Item label="P99 Latency">{selectedHistory.history[selectedHistory.history.length-1]?.p99_latency || '-'} ms</Descriptions.Item>
                     <Descriptions.Item label="Error Rate">{selectedHistory.stats.total_requests > 0 ? (selectedHistory.stats.error_requests / selectedHistory.stats.total_requests * 100).toFixed(2) : 0}%</Descriptions.Item>
                 </Descriptions>
                 
@@ -449,11 +528,13 @@ const PerformanceTestPage: React.FC = () => {
                             <LineChart data={selectedHistory.history}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="timestamp" tick={false} />
-                                <YAxis yAxisId="left" />
+                                <YAxis yAxisId="left" unit="ms" />
                                 <YAxis yAxisId="right" orientation="right" />
                                 <Tooltip labelFormatter={(t) => new Date(t*1000).toLocaleTimeString()} />
                                 <Legend />
-                                <Line yAxisId="left" type="monotone" dataKey="latency" stroke="#82ca9d" name="Latency (ms)" isAnimationActive={false} dot={false} />
+                                <Line yAxisId="left" type="monotone" dataKey="latency" stroke="#82ca9d" name="Avg Latency" isAnimationActive={false} dot={false} />
+                                <Line yAxisId="left" type="monotone" dataKey="p95_latency" stroke="#faad14" name="P95 Latency" isAnimationActive={false} dot={false} strokeDasharray="5 5" />
+                                <Line yAxisId="left" type="monotone" dataKey="p99_latency" stroke="#cf1322" name="P99 Latency" isAnimationActive={false} dot={false} strokeDasharray="3 3" />
                                 <Line yAxisId="right" type="step" dataKey="users" stroke="#ff7300" name="Users" isAnimationActive={false} dot={false} />
                             </LineChart>
                         </ResponsiveContainer>

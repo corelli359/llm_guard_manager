@@ -9,7 +9,9 @@ import {
   SafetyCertificateOutlined,
   DashboardOutlined,
   LoginOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  UserOutlined,
+  AuditOutlined
 } from '@ant-design/icons';
 import MetaTagsPage from './pages/MetaTags';
 import GlobalKeywordsPage from './pages/GlobalKeywords';
@@ -18,6 +20,8 @@ import ScenarioKeywordsPage from './pages/ScenarioKeywords';
 import ScenarioPoliciesPage from './pages/ScenarioPolicies';
 import InputPlaygroundPage from './pages/InputPlayground';
 import PerformanceTestPage from './pages/PerformanceTest';
+import UsersPage from './pages/UsersPage';
+import SmartLabelingPage from './pages/SmartLabeling';
 import AppsPage from './pages/Apps';
 import AppDashboard from './pages/AppDashboard';
 import LoginPage from './pages/LoginPage';
@@ -77,56 +81,81 @@ const AppLayout: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('current_app_id');
+    localStorage.removeItem('user_role');
     navigate('/login');
   };
 
-  // Construct Menu Items
-  const menuItems: any[] = [
-    {
-      type: 'group',
-      label: '全局配置',
-      children: [
-        {
-            key: '/apps',
-            icon: <AppstoreOutlined />,
-            label: <Link to="/apps">应用管理</Link>,
-        },
-        {
-            key: '/tags',
-            icon: <TagsOutlined />,
-            label: <Link to="/tags">标签管理</Link>,
-        },
-        {
-            key: '/global-keywords',
-            icon: <GlobalOutlined />,
-            label: <Link to="/global-keywords">全局敏感词</Link>,
-        },
-        {
-            key: '/global-policies',
-            icon: <SafetyCertificateOutlined />,
-            label: <Link to="/global-policies">全局默认规则</Link>,
-        },
-      ]
-    },
-    {
-      type: 'group',
-      label: '测试工具',
-      children: [
-        {
-          key: '/playground',
-          icon: <ExperimentOutlined />,
-          label: <Link to="/playground">输入试验场</Link>,
-        },
-        {
-          key: '/performance',
-          icon: <ThunderboltOutlined />,
-          label: <Link to="/performance">性能测试</Link>,
-        },
-      ]
-    }
-  ];
+  const userRole = localStorage.getItem('user_role') || 'AUDITOR';
 
-  if (selectedAppId) {
+  // Construct Menu Items
+  const menuItems: any[] = [];
+
+  // Common: Smart Labeling
+  menuItems.push({
+      key: '/smart-labeling',
+      icon: <AuditOutlined />,
+      label: <Link to="/smart-labeling">智能标注</Link>,
+  });
+
+  if (userRole === 'ADMIN') {
+      menuItems.push({
+        type: 'group',
+        label: '系统管理',
+        children: [
+            {
+                key: '/users',
+                icon: <UserOutlined />,
+                label: <Link to="/users">用户管理</Link>,
+            }
+        ]
+      });
+
+      menuItems.push({
+        type: 'group',
+        label: '全局配置',
+        children: [
+            {
+                key: '/apps',
+                icon: <AppstoreOutlined />,
+                label: <Link to="/apps">应用管理</Link>,
+            },
+            {
+                key: '/tags',
+                icon: <TagsOutlined />,
+                label: <Link to="/tags">标签管理</Link>,
+            },
+            {
+                key: '/global-keywords',
+                icon: <GlobalOutlined />,
+                label: <Link to="/global-keywords">全局敏感词</Link>,
+            },
+            {
+                key: '/global-policies',
+                icon: <SafetyCertificateOutlined />,
+                label: <Link to="/global-policies">全局默认规则</Link>,
+            },
+        ]
+      });
+
+      menuItems.push({
+        type: 'group',
+        label: '测试工具',
+        children: [
+            {
+            key: '/playground',
+            icon: <ExperimentOutlined />,
+            label: <Link to="/playground">输入试验场</Link>,
+            },
+            {
+            key: '/performance',
+            icon: <ThunderboltOutlined />,
+            label: <Link to="/performance">性能测试</Link>,
+            },
+        ]
+      });
+  }
+
+  if (selectedAppId && userRole === 'ADMIN') {
       menuItems.push({
           type: 'divider'
       });
@@ -213,6 +242,8 @@ const AppLayout: React.FC = () => {
               <Route path="/global-policies" element={<GlobalPoliciesPage />} />
               <Route path="/playground" element={<InputPlaygroundPage />} />
               <Route path="/performance" element={<PerformanceTestPage />} />
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/smart-labeling" element={<SmartLabelingPage />} />
             </Routes>
           </div>
         </Content>
