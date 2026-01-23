@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { MetaTag, GlobalKeyword, ScenarioKeyword, RuleScenarioPolicy, ScenarioApp } from './types';
 
+// 获取 base path（如果部署在子路径下）
+const basePath = import.meta.env.BASE_URL || '/';
+const apiBasePath = basePath === '/' ? '' : basePath.replace(/\/$/, '');
+
 const api = axios.create({
-  baseURL: '/api/v1', // Vite proxy will handle this
+  baseURL: import.meta.env.VITE_API_BASE_URL || `${apiBasePath}/api/v1`,
 });
 
 // Request interceptor to add the authorization token to headers

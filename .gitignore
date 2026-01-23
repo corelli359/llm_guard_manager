@@ -8,3 +8,6 @@ dist/
 *.zip
 backend/app/core/config.py
 performance_history/
+*.yaml
+*.md
+*.sh

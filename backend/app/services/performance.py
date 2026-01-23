@@ -240,23 +240,60 @@ class LoadRunner:
         await asyncio.gather(*workers)
 
     async def _run_step(self, initial: int, step: int, duration: int, max_users: int):
-        current = initial
+        """
+        Standard step load test with plateau at each level.
+        Each step has two phases:
+        1. Ramp-up: Gradually increase users to target level (20% of duration)
+        2. Plateau: Maintain constant load to observe steady-state performance (80% of duration)
+        """
         workers = []
-        
-        while current <= max_users and not self.stop_event.is_set():
-            self.current_users = current
-            new_workers_count = current - len(workers)
-            for _ in range(new_workers_count):
-                workers.append(asyncio.create_task(self._worker()))
-            
-            step_end = time.time() + duration
-            while time.time() < step_end and not self.stop_event.is_set():
-                await asyncio.sleep(1)
-            
-            if current >= max_users:
+        current = 0
+
+        # Build list of target user counts for each stage
+        stages = []
+        target = initial
+        while target <= max_users:
+            stages.append(target)
+            target += step
+
+        # Execute each stage
+        for stage_target in stages:
+            if self.stop_event.is_set():
                 break
-            current += step
-            
+
+            users_to_add = stage_target - current
+            stage_start = time.time()
+
+            # Phase 1: Ramp-up (20% of duration)
+            # Add users gradually to avoid connection pool spike
+            if users_to_add > 0:
+                rampup_duration = duration * 0.2
+                interval = rampup_duration / users_to_add if users_to_add > 0 else 0
+
+                for i in range(users_to_add):
+                    if self.stop_event.is_set():
+                        break
+
+                    # Create new worker
+                    workers.append(asyncio.create_task(self._worker()))
+                    current += 1
+                    self.current_users = current
+
+                    # Wait until next user creation time
+                    next_user_time = stage_start + (i + 1) * interval
+                    wait_time = next_user_time - time.time()
+                    if wait_time > 0:
+                        await asyncio.sleep(wait_time)
+
+            # Phase 2: Plateau (80% of duration)
+            # Maintain constant load to observe steady-state performance
+            plateau_end = stage_start + duration
+            remaining_time = plateau_end - time.time()
+            if remaining_time > 0:
+                while time.time() < plateau_end and not self.stop_event.is_set():
+                    await asyncio.sleep(1)
+
+        # Stop all workers
         self.stop_event.set()
         await asyncio.gather(*workers)
 
