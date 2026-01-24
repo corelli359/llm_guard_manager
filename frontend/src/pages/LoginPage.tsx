@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Card, message, Tabs } from 'antd';
 import { UserOutlined, LockOutlined, SafetyCertificateOutlined, TeamOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ const LoginPage: React.FC = () => {
       params.append('username', values.username);
       params.append('password', values.password);
 
-      const response = await axios.post('/api/v1/login/access-token', params, {
+      const response = await api.post('/login/access-token', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
       

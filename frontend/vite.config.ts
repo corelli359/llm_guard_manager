@@ -11,7 +11,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:9001',
+        // 支持 k8s 环境配置后端地址
+        // 本地开发: http://127.0.0.1:9001
+        // k8s 环境: http://backend:9001
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:9001',
         changeOrigin: true,
       }
     }
