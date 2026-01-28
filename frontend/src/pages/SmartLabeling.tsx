@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Tabs, Tag, Space, message, Select, Radio, Tooltip, Alert, Popconfirm } from 'antd';
 import { CheckOutlined, CloseOutlined, CloudUploadOutlined, UserOutlined, DeleteOutlined } from '@ant-design/icons';
-import { stagingApi } from '../api';
+import { stagingApi, metaTagsApi } from '../api';
+import { MetaTag } from '../types';
 import dayjs from 'dayjs';
 
 const { TabPane } = Tabs;
@@ -15,9 +16,9 @@ const SmartLabelingPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [syncing, setSyncing] = useState(false);
-  
+  const [metaTags, setMetaTags] = useState<MetaTag[]>([]);
+
   // Static options
-  const tagOptions = ['POLITICAL', 'PORN', 'AD', 'VIOLENCE', 'OTHER'];
   const riskOptions = ['High', 'Medium', 'Low'];
   const strategyOptions = ['BLOCK', 'PASS', 'REWRITE'];
 
@@ -25,8 +26,18 @@ const SmartLabelingPage: React.FC = () => {
   const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
+    fetchMetaTags();
     fetchData();
   }, [activeTab, statusFilter]);
+
+  const fetchMetaTags = async () => {
+    try {
+      const res = await metaTagsApi.getAll();
+      setMetaTags(res.data.filter(tag => tag.is_active));
+    } catch (e) {
+      message.error('获取标签列表失败');
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -171,12 +182,15 @@ const SmartLabelingPage: React.FC = () => {
     {
         title: '模型预测',
         key: 'prediction',
-        render: (_: any, record: any) => (
-            <Space direction="vertical" size={0}>
-                <Tag>{record.predicted_tag}</Tag>
-                <Tag color="orange" style={{fontSize: 10}}>{record.predicted_risk}</Tag>
-            </Space>
-        )
+        render: (_: any, record: any) => {
+            const tagInfo = metaTags.find(t => t.tag_code === record.predicted_tag);
+            return (
+                <Space direction="vertical" size={0}>
+                    <Tag>{record.predicted_tag}{tagInfo ? ` - ${tagInfo.tag_name}` : ''}</Tag>
+                    <Tag color="orange" style={{fontSize: 10}}>{record.predicted_risk}</Tag>
+                </Space>
+            );
+        }
     },
     {
         title: '人工修正 (Final)',
@@ -185,16 +199,22 @@ const SmartLabelingPage: React.FC = () => {
             const isEditable = record.status !== 'SYNCED';
             return (
                 <Space direction="vertical" size={4}>
-                    <Select 
-                        defaultValue={record.final_tag || record.predicted_tag} 
-                        style={{ width: 120 }} size="small" disabled={!isEditable}
+                    <Select
+                        defaultValue={record.final_tag || record.predicted_tag}
+                        style={{ width: 180 }} size="small" disabled={!isEditable}
                         onChange={(val) => handleReviewKeyword(record, 'REVIEWED', { final_tag: val })}
+                        showSearch
+                        optionFilterProp="children"
                     >
-                        {tagOptions.map(t => <Option key={t} value={t}>{t}</Option>)}
+                        {metaTags.map(tag => (
+                            <Option key={tag.tag_code} value={tag.tag_code}>
+                                {tag.tag_code} - {tag.tag_name}
+                            </Option>
+                        ))}
                     </Select>
-                    <Select 
-                        defaultValue={record.final_risk || record.predicted_risk} 
-                        style={{ width: 120 }} size="small" disabled={!isEditable}
+                    <Select
+                        defaultValue={record.final_risk || record.predicted_risk}
+                        style={{ width: 180 }} size="small" disabled={!isEditable}
                         onChange={(val) => handleReviewKeyword(record, 'REVIEWED', { final_risk: val })}
                     >
                         {riskOptions.map(r => <Option key={r} value={r}>{r}</Option>)}
@@ -231,7 +251,15 @@ const SmartLabelingPage: React.FC = () => {
   ];
 
   const rulesColumns = [
-    { title: '标签', dataIndex: 'tag_code', key: 'tag_code', render: (t: string) => <Tag color="blue">{t}</Tag> },
+    {
+        title: '标签',
+        dataIndex: 'tag_code',
+        key: 'tag_code',
+        render: (tagCode: string) => {
+            const tagInfo = metaTags.find(t => t.tag_code === tagCode);
+            return <Tag color="blue">{tagCode}{tagInfo ? ` - ${tagInfo.tag_name}` : ''}</Tag>;
+        }
+    },
     { title: '额外条件', dataIndex: 'extra_condition', key: 'extra_condition', render: (t: string) => t || '-' },
     {
         title: '模型预测',

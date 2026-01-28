@@ -257,7 +257,7 @@ const AppLayout: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <Router>
+    <Router basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<AuthLayout />}>
