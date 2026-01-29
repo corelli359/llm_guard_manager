@@ -11,3 +11,5 @@ performance_history/
 *.yaml
 *.md
 *.sh
+abc
+backend/migrations/

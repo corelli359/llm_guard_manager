@@ -133,12 +133,18 @@ class StagingGlobalKeywords(Base):
     final_tag: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     final_risk: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     
-    status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True) # PENDING, REVIEWED, SYNCED, IGNORED
+    status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True) # PENDING, CLAIMED, REVIEWED, SYNCED, IGNORED
     is_modified: Mapped[bool] = mapped_column(Boolean, default=False)
-    
-    annotator: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    # 认领信息
+    claimed_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    claimed_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    batch_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+
+    # 标注信息
+    annotator: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     annotated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    
+
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -152,10 +158,16 @@ class StagingGlobalRules(Base):
     final_strategy: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     extra_condition: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     
-    status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True)
+    status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True) # PENDING, CLAIMED, REVIEWED, SYNCED, IGNORED
     is_modified: Mapped[bool] = mapped_column(Boolean, default=False)
-    
-    annotator: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    # 认领信息
+    claimed_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    claimed_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    batch_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+
+    # 标注信息
+    annotator: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     annotated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    
+
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -96,17 +96,40 @@ export const usersApi = {
 };
 
 export const stagingApi = {
-    listKeywords: (status?: string) => api.get(`/staging/keywords${status ? `?status=${status}` : ''}`),
+    listKeywords: (status?: string, myTasks?: boolean) => {
+        let url = '/staging/keywords';
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (myTasks) params.append('my_tasks', 'true');
+        if (params.toString()) url += `?${params.toString()}`;
+        return api.get(url);
+    },
     reviewKeyword: (id: string, data: any) => api.patch(`/staging/keywords/${id}`, data),
     deleteKeyword: (id: string) => api.delete(`/staging/keywords/${id}`),
     syncKeywords: (ids: string[]) => api.post('/staging/keywords/sync', { ids }),
     importMock: () => api.post('/staging/keywords/import-mock'),
-    
-    listRules: (status?: string) => api.get(`/staging/rules${status ? `?status=${status}` : ''}`),
+
+    listRules: (status?: string, myTasks?: boolean) => {
+        let url = '/staging/rules';
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (myTasks) params.append('my_tasks', 'true');
+        if (params.toString()) url += `?${params.toString()}`;
+        return api.get(url);
+    },
     reviewRule: (id: string, data: any) => api.patch(`/staging/rules/${id}`, data),
     deleteRule: (id: string) => api.delete(`/staging/rules/${id}`),
     syncRules: (ids: string[]) => api.post('/staging/rules/sync', { ids }),
     importMockRules: () => api.post('/staging/rules/import-mock'),
+
+    // 批量认领
+    claimBatch: (batchSize: number, taskType: string) => api.post('/staging/claim', { batch_size: batchSize, task_type: taskType }),
+    // 释放超时任务
+    releaseExpired: () => api.post('/staging/release-expired'),
+    // 获取标注员统计
+    getAnnotatorStats: (taskType: string) => api.get(`/staging/stats/annotators?task_type=${taskType}`),
+    // 获取我的任务统计
+    getMyTasksStats: (taskType: string) => api.get(`/staging/my-tasks/stats?task_type=${taskType}`),
 };
 
 export default api;

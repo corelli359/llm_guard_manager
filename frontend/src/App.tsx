@@ -11,7 +11,8 @@ import {
   LoginOutlined,
   ThunderboltOutlined,
   UserOutlined,
-  AuditOutlined
+  AuditOutlined,
+  BarChartOutlined
 } from '@ant-design/icons';
 import MetaTagsPage from './pages/MetaTags';
 import GlobalKeywordsPage from './pages/GlobalKeywords';
@@ -22,6 +23,7 @@ import InputPlaygroundPage from './pages/InputPlayground';
 import PerformanceTestPage from './pages/PerformanceTest';
 import UsersPage from './pages/UsersPage';
 import SmartLabelingPage from './pages/SmartLabeling';
+import AnnotatorStatsPage from './pages/AnnotatorStats';
 import AppsPage from './pages/Apps';
 import AppDashboard from './pages/AppDashboard';
 import LoginPage from './pages/LoginPage';
@@ -96,6 +98,15 @@ const AppLayout: React.FC = () => {
       icon: <AuditOutlined />,
       label: <Link to="/smart-labeling">智能标注</Link>,
   });
+
+  // Admin: Annotator Statistics
+  if (userRole === 'ADMIN') {
+      menuItems.push({
+          key: '/annotator-stats',
+          icon: <BarChartOutlined />,
+          label: <Link to="/annotator-stats">标注统计</Link>,
+      });
+  }
 
   if (userRole === 'ADMIN') {
       menuItems.push({
@@ -244,6 +255,7 @@ const AppLayout: React.FC = () => {
               <Route path="/performance" element={<PerformanceTestPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/smart-labeling" element={<SmartLabelingPage />} />
+              <Route path="/annotator-stats" element={<AnnotatorStatsPage />} />
             </Routes>
           </div>
         </Content>

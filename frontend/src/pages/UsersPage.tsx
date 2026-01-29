@@ -69,9 +69,26 @@ const UsersPage: React.FC = () => {
       }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    message.success('已复制到剪贴板');
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success('已复制到剪贴板');
+    } catch (err) {
+      // 降级方案：使用传统方法
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        message.success('已复制到剪贴板');
+      } catch (e) {
+        message.error('复制失败，请手动复制');
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   const columns = [
