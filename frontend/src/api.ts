@@ -1,12 +1,10 @@
 import axios from 'axios';
 import { MetaTag, GlobalKeyword, ScenarioKeyword, RuleScenarioPolicy, ScenarioApp } from './types';
 
-// 获取 base path（如果部署在子路径下）
-const basePath = import.meta.env.BASE_URL || '/';
-const apiBasePath = basePath === '/' ? '' : basePath.replace(/\/$/, '');
-
+// 后端 API 路径配置
+// 通过 VITE_API_BASE_URL 环境变量设置，默认为 /api/v1（开发环境通过 proxy）
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || `${apiBasePath}/api/v1`,
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
 });
 
 // Request interceptor to add the authorization token to headers
@@ -130,6 +128,8 @@ export const stagingApi = {
     getAnnotatorStats: (taskType: string) => api.get(`/staging/stats/annotators?task_type=${taskType}`),
     // 获取我的任务统计
     getMyTasksStats: (taskType: string) => api.get(`/staging/my-tasks/stats?task_type=${taskType}`),
+    // 获取任务总览
+    getTaskOverview: (taskType: string) => api.get(`/staging/overview?task_type=${taskType}`),
 };
 
 export default api;

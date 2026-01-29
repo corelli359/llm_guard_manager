@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   // 支持子路径部署，通过环境变量配置
   // 开发环境: base: '/'
-  // 生产环境: base: process.env.VITE_BASE_PATH || '/'
-  base: process.env.VITE_BASE_PATH || '/',
+  // 生产环境: base: process.env.VITE_BASE_PATH || '/web-manager/'
+  base: process.env.VITE_BASE_PATH || '/web-manager/',
   server: {
     proxy: {
       '/api': {

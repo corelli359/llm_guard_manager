@@ -2,6 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 部署铁令（CRITICAL - MUST FOLLOW）
+
+**每次部署必须严格遵守以下铁令，这是最高优先级的规则！**
+
+### 铁令 1: 部署标准
+1. ✅ **按照云上方式部署**：部署的前缀、挂载路径必须明确写入配置
+2. ✅ **部署后必须测试**：确保所有功能正常工作后才算部署完成
+
+### 铁令 2: 测试标准
+**所有 HTTP 测试必须返回 200 状态码才算成功！**
+- ❌ 错误示例：期望返回 `{"detail":"Incorrect username or password"}` 来证明 API 可访问
+- ✅ 正确示例：使用正确的账号密码，期望返回 `{"access_token":"..."}` 和 HTTP 200
+
+### 铁令 3: 部署文档
+**必须严格按照 `DEPLOYMENT_STANDARD.md` 文档执行部署、测试和检查！**
+- 不得跳过任何测试步骤
+- 不得修改测试标准
+- 必须填写部署检查表
+
+### 铁令 4: K8s 部署配置
+**前端构建必须使用以下环境变量：**
+```bash
+VITE_BASE_PATH=/web-manager/ VITE_API_BASE_URL=/dbmanage/api/v1 npm run build
+```
+- 前端访问路径：`/web-manager/`
+- 后端 API 路径：`/dbmanage/api/v1`
+- 不得使用其他路径配置
+
+---
+
 ## Project Overview
 
 LLM Guard Manager is a full-stack web application for managing LLM (Large Language Model) safety guardrails and content filtering policies. It provides a comprehensive platform for configuring sensitive word libraries, classification tags, filtering rules, and testing content against configured policies.

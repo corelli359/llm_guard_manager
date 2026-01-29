@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Tabs, Tag, Space, message, Select, Radio, Tooltip, Alert, Popconfirm, Card, Statistic, Progress } from 'antd';
+import { Table, Button, Tabs, Tag, Space, message, Select, Radio, Tooltip, Alert, Popconfirm, Card, Statistic, Progress, Row, Col } from 'antd';
 import { CheckOutlined, CloseOutlined, CloudUploadOutlined, UserOutlined, DeleteOutlined, ClockCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 import { stagingApi, metaTagsApi } from '../api';
 import { MetaTag } from '../types';
@@ -18,9 +18,12 @@ const SmartLabelingPage: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [metaTags, setMetaTags] = useState<MetaTag[]>([]);
   const [myTasksStats, setMyTasksStats] = useState<any>(null);
+  const [taskOverview, setTaskOverview] = useState<any>(null);
   const [countdown, setCountdown] = useState<string>('');
   const [claiming, setClaiming] = useState(false);
   const [showMyTasks, setShowMyTasks] = useState(true);
+  // 保存用户的修改（key: record.id, value: {final_tag, final_risk, final_strategy}）
+  const [userEdits, setUserEdits] = useState<Record<string, any>>({});
 
   // Static options
   const riskOptions = ['High', 'Medium', 'Low'];
@@ -33,6 +36,7 @@ const SmartLabelingPage: React.FC = () => {
     fetchMetaTags();
     fetchData();
     fetchMyTasksStats();
+    fetchTaskOverview();
   }, [activeTab, statusFilter, showMyTasks]);
 
   // 倒计时定时器
@@ -50,8 +54,7 @@ const SmartLabelingPage: React.FC = () => {
       if (distance < 0) {
         setCountdown('已超时');
         clearInterval(timer);
-        fetchData();
-        fetchMyTasksStats();
+        // 不要在这里调用 fetchData 和 fetchMyTasksStats，避免无限循环
       } else {
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
@@ -60,7 +63,7 @@ const SmartLabelingPage: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [myTasksStats]);
+  }, [myTasksStats?.expires_at]); // 只依赖 expires_at，不依赖整个 myTasksStats
 
   const fetchMetaTags = async () => {
     try {
@@ -97,6 +100,15 @@ const SmartLabelingPage: React.FC = () => {
     }
   };
 
+  const fetchTaskOverview = async () => {
+    try {
+      const res = await stagingApi.getTaskOverview(activeTab);
+      setTaskOverview(res.data);
+    } catch (e) {
+      console.error('获取任务总览失败', e);
+    }
+  };
+
   const handleClaimBatch = async () => {
     setClaiming(true);
     try {
@@ -106,6 +118,7 @@ const SmartLabelingPage: React.FC = () => {
       setShowMyTasks(true);
       fetchData();
       fetchMyTasksStats();
+      fetchTaskOverview();
     } catch (e: any) {
       message.error(e.response?.data?.detail || '领取任务失败');
     } finally {
@@ -116,14 +129,23 @@ const SmartLabelingPage: React.FC = () => {
   // --- Keyword Logic ---
   const handleReviewKeyword = async (record: any, newStatus: string, changes: any = {}) => {
     try {
+      // 从 userEdits 中获取用户的修改
+      const edits = userEdits[record.id] || {};
       await stagingApi.reviewKeyword(record.id, {
-        final_tag: changes.final_tag || record.final_tag || record.predicted_tag,
-        final_risk: changes.final_risk || record.final_risk || record.predicted_risk,
+        final_tag: changes.final_tag || edits.final_tag || record.final_tag || record.predicted_tag,
+        final_risk: changes.final_risk || edits.final_risk || record.final_risk || record.predicted_risk,
         status: newStatus
       });
       message.success('操作成功');
+      // 清除该记录的编辑状态
+      setUserEdits(prev => {
+        const newEdits = { ...prev };
+        delete newEdits[record.id];
+        return newEdits;
+      });
       fetchData();
       fetchMyTasksStats();
+      fetchTaskOverview();
     } catch (e) {
       message.error('操作失败');
     }
@@ -142,13 +164,22 @@ const SmartLabelingPage: React.FC = () => {
   // --- Rule Logic ---
   const handleReviewRule = async (record: any, newStatus: string, changes: any = {}) => {
     try {
+      // 从 userEdits 中获取用户的修改
+      const edits = userEdits[record.id] || {};
       await stagingApi.reviewRule(record.id, {
-        final_strategy: changes.final_strategy || record.final_strategy || record.predicted_strategy,
+        final_strategy: changes.final_strategy || edits.final_strategy || record.final_strategy || record.predicted_strategy,
         status: newStatus
       });
       message.success('操作成功');
+      // 清除该记录的编辑状态
+      setUserEdits(prev => {
+        const newEdits = { ...prev };
+        delete newEdits[record.id];
+        return newEdits;
+      });
       fetchData();
       fetchMyTasksStats();
+      fetchTaskOverview();
     } catch (e) {
       message.error('操作失败');
     }
@@ -191,12 +222,66 @@ const SmartLabelingPage: React.FC = () => {
           message.success(`已释放 ${res.data.released_keywords + res.data.released_rules} 条超时任务`);
           fetchData();
           fetchMyTasksStats();
+          fetchTaskOverview();
       } catch (e) {
           message.error('释放失败');
       }
   };
 
   // --- UI Helpers ---
+  const renderTaskOverview = () => {
+    if (!taskOverview) return null;
+
+    return (
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Row gutter={16}>
+          <Col span={4}>
+            <Statistic
+              title="总任务数"
+              value={taskOverview.total_count}
+              prefix={<FileTextOutlined />}
+            />
+          </Col>
+          <Col span={4}>
+            <Statistic
+              title="待认领"
+              value={taskOverview.pending_count}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Col>
+          <Col span={4}>
+            <Statistic
+              title="已认领"
+              value={taskOverview.claimed_count}
+              valueStyle={{ color: '#fa8c16' }}
+            />
+          </Col>
+          <Col span={4}>
+            <Statistic
+              title="已审核"
+              value={taskOverview.reviewed_count}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Col>
+          <Col span={4}>
+            <Statistic
+              title="已入库"
+              value={taskOverview.synced_count}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Col>
+          <Col span={4}>
+            <Statistic
+              title="已忽略"
+              value={taskOverview.ignored_count}
+              valueStyle={{ color: '#999' }}
+            />
+          </Col>
+        </Row>
+      </Card>
+    );
+  };
+
   const renderTaskProgress = () => {
     if (!myTasksStats || myTasksStats.claimed_count === 0) {
       return (
@@ -327,14 +412,22 @@ const SmartLabelingPage: React.FC = () => {
         key: 'final',
         render: (_: any, record: any) => {
             const isEditable = record.status !== 'SYNCED' && record.status !== 'REVIEWED' && record.status !== 'IGNORED';
+            const edits = userEdits[record.id] || {};
             return (
                 <Space direction="vertical" size={4}>
                     <Select
-                        defaultValue={record.final_tag || record.predicted_tag}
+                        value={edits.final_tag || record.final_tag || record.predicted_tag}
                         style={{ width: 180 }} size="small" disabled={!isEditable}
-                        onChange={(val) => handleReviewKeyword(record, 'REVIEWED', { final_tag: val })}
+                        onChange={(val) => {
+                            setUserEdits(prev => ({
+                                ...prev,
+                                [record.id]: { ...prev[record.id], final_tag: val }
+                            }));
+                        }}
                         showSearch
                         optionFilterProp="children"
+                        dropdownStyle={{ minWidth: 500 }}
+                        popupMatchSelectWidth={false}
                     >
                         {metaTags.map(tag => (
                             <Option key={tag.tag_code} value={tag.tag_code}>
@@ -343,9 +436,14 @@ const SmartLabelingPage: React.FC = () => {
                         ))}
                     </Select>
                     <Select
-                        defaultValue={record.final_risk || record.predicted_risk}
+                        value={edits.final_risk || record.final_risk || record.predicted_risk}
                         style={{ width: 180 }} size="small" disabled={!isEditable}
-                        onChange={(val) => handleReviewKeyword(record, 'REVIEWED', { final_risk: val })}
+                        onChange={(val) => {
+                            setUserEdits(prev => ({
+                                ...prev,
+                                [record.id]: { ...prev[record.id], final_risk: val }
+                            }));
+                        }}
                     >
                         {riskOptions.map(r => <Option key={r} value={r}>{r}</Option>)}
                     </Select>
@@ -401,11 +499,17 @@ const SmartLabelingPage: React.FC = () => {
         key: 'final',
         render: (_: any, record: any) => {
             const isEditable = record.status !== 'SYNCED' && record.status !== 'REVIEWED' && record.status !== 'IGNORED';
+            const edits = userEdits[record.id] || {};
             return (
                 <Select
-                    defaultValue={record.final_strategy || record.predicted_strategy}
+                    value={edits.final_strategy || record.final_strategy || record.predicted_strategy}
                     style={{ width: 120 }} size="small" disabled={!isEditable}
-                    onChange={(val) => handleReviewRule(record, 'REVIEWED', { final_strategy: val })}
+                    onChange={(val) => {
+                        setUserEdits(prev => ({
+                            ...prev,
+                            [record.id]: { ...prev[record.id], final_strategy: val }
+                        }));
+                    }}
                 >
                     {strategyOptions.map(s => <Option key={s} value={s}>{s}</Option>)}
                 </Select>
@@ -467,6 +571,7 @@ const SmartLabelingPage: React.FC = () => {
         </Space>
       </div>
 
+      {renderTaskOverview()}
       {renderTaskProgress()}
       {renderHelpMessage()}
 

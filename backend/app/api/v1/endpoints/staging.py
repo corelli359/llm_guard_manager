@@ -575,3 +575,50 @@ async def get_my_tasks_stats(
         claimed_at=claimed_at,
         expires_at=expires_at
     )
+
+
+class TaskOverview(BaseModel):
+    pending_count: int
+    claimed_count: int
+    reviewed_count: int
+    synced_count: int
+    ignored_count: int
+    total_count: int
+
+@router.get("/overview", response_model=TaskOverview)
+async def get_task_overview(
+    task_type: str = Query("keywords", description="keywords or rules"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    """获取任务总览统计"""
+    if task_type == "keywords":
+        stmt = select(
+            func.sum(func.if_(StagingGlobalKeywords.status == "PENDING", 1, 0)).label("pending_count"),
+            func.sum(func.if_(StagingGlobalKeywords.status == "CLAIMED", 1, 0)).label("claimed_count"),
+            func.sum(func.if_(StagingGlobalKeywords.status == "REVIEWED", 1, 0)).label("reviewed_count"),
+            func.sum(func.if_(StagingGlobalKeywords.status == "SYNCED", 1, 0)).label("synced_count"),
+            func.sum(func.if_(StagingGlobalKeywords.status == "IGNORED", 1, 0)).label("ignored_count"),
+            func.count(StagingGlobalKeywords.id).label("total_count")
+        )
+    else:
+        stmt = select(
+            func.sum(func.if_(StagingGlobalRules.status == "PENDING", 1, 0)).label("pending_count"),
+            func.sum(func.if_(StagingGlobalRules.status == "CLAIMED", 1, 0)).label("claimed_count"),
+            func.sum(func.if_(StagingGlobalRules.status == "REVIEWED", 1, 0)).label("reviewed_count"),
+            func.sum(func.if_(StagingGlobalRules.status == "SYNCED", 1, 0)).label("synced_count"),
+            func.sum(func.if_(StagingGlobalRules.status == "IGNORED", 1, 0)).label("ignored_count"),
+            func.count(StagingGlobalRules.id).label("total_count")
+        )
+
+    result = await db.execute(stmt)
+    row = result.first()
+
+    return TaskOverview(
+        pending_count=row.pending_count or 0,
+        claimed_count=row.claimed_count or 0,
+        reviewed_count=row.reviewed_count or 0,
+        synced_count=row.synced_count or 0,
+        ignored_count=row.ignored_count or 0,
+        total_count=row.total_count or 0
+    )
