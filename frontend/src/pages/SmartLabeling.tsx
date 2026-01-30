@@ -209,8 +209,101 @@ const SmartLabelingPage: React.FC = () => {
       message.success(`成功同步 ${res.data.synced_count} 条数据入库`);
       setSelectedRowKeys([]);
       fetchData();
+      fetchTaskOverview();
     } catch (e) {
       message.error('同步失败');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // --- Sync All Logic ---
+  const handleSyncAll = async () => {
+    setSyncing(true);
+    try {
+      const currentData = activeTab === 'keywords' ? data : rulesData;
+      const allIds = currentData.map((item: any) => item.id);
+
+      if (allIds.length === 0) {
+        message.warning('没有可入库的数据');
+        return;
+      }
+
+      let res;
+      if (activeTab === 'keywords') {
+          res = await stagingApi.syncKeywords(allIds as string[]);
+      } else {
+          res = await stagingApi.syncRules(allIds as string[]);
+      }
+      message.success(`成功同步 ${res.data.synced_count} 条数据入库`);
+      setSelectedRowKeys([]);
+      fetchData();
+      fetchTaskOverview();
+    } catch (e) {
+      message.error('同步失败');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // --- Batch Review Logic ---
+  const handleBatchReview = async (newStatus: string) => {
+    if (selectedRowKeys.length === 0) return;
+    setSyncing(true);
+    try {
+      // 构建批量审核数据
+      const items = selectedRowKeys.map(id => {
+        const record: any = activeTab === 'keywords'
+          ? data.find((r: any) => r.id === id)
+          : rulesData.find((r: any) => r.id === id);
+
+        if (!record) return null;
+
+        const edits = userEdits[id as string] || {};
+
+        if (activeTab === 'keywords') {
+          return {
+            id: id as string,
+            final_tag: edits.final_tag || record.final_tag || record.predicted_tag,
+            final_risk: edits.final_risk || record.final_risk || record.predicted_risk,
+            status: newStatus
+          };
+        } else {
+          return {
+            id: id as string,
+            final_strategy: edits.final_strategy || record.final_strategy || record.predicted_strategy,
+            status: newStatus
+          };
+        }
+      }).filter(item => item !== null);
+
+      let res;
+      if (activeTab === 'keywords') {
+        res = await stagingApi.batchReviewKeywords(items);
+      } else {
+        res = await stagingApi.batchReviewRules(items);
+      }
+
+      message.success(`成功${newStatus === 'REVIEWED' ? '确认' : '忽略'} ${res.data.success_count} 条任务`);
+      if (res.data.failed_count > 0) {
+        message.warning(`${res.data.failed_count} 条任务处理失败`);
+      }
+
+      // 清除已处理任务的编辑状态
+      setUserEdits(prev => {
+        const newEdits = { ...prev };
+        selectedRowKeys.forEach(id => {
+          delete newEdits[id as string];
+        });
+        return newEdits;
+      });
+
+      setSelectedRowKeys([]);
+      fetchData();
+      fetchMyTasksStats();
+      fetchTaskOverview();
+    } catch (e) {
+      message.error('批量操作失败');
     } finally {
       setSyncing(false);
     }
@@ -547,7 +640,12 @@ const SmartLabelingPage: React.FC = () => {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
     getCheckboxProps: (record: any) => ({
-      disabled: record.status !== 'REVIEWED',
+      // 管理员在 REVIEWED 状态可以选择（用于入库）
+      // 所有人在 CLAIMED 状态可以选择（用于批量审核）
+      disabled: !(
+        (statusFilter === 'REVIEWED' && isAdmin) ||
+        (statusFilter === 'CLAIMED' && record.status === 'CLAIMED')
+      ),
     }),
   };
 
@@ -556,18 +654,8 @@ const SmartLabelingPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2>智能标注与审核 (Smart Labeling)</h2>
         <Space>
+            {/* 管理员功能 */}
             {isAdmin && <Button onClick={handleReleaseExpired}>释放超时任务</Button>}
-            {isAdmin && (
-                <Button
-                    type="primary"
-                    icon={<CloudUploadOutlined />}
-                    disabled={selectedRowKeys.length === 0}
-                    loading={syncing}
-                    onClick={handleSync}
-                >
-                    批量入库 ({selectedRowKeys.length})
-                </Button>
-            )}
         </Space>
       </div>
 
@@ -580,30 +668,98 @@ const SmartLabelingPage: React.FC = () => {
             <Radio.Button value="CLAIMED">我的任务 (Claimed)</Radio.Button>
             <Radio.Button value="PENDING">待认领 (Pending)</Radio.Button>
             <Radio.Button value="REVIEWED">已审核 (Reviewed)</Radio.Button>
-            <Radio.Button value="SYNCED">已入库 (Synced)</Radio.Button>
+            {isAdmin && <Radio.Button value="SYNCED">已入库 (Synced)</Radio.Button>}
             <Radio.Button value="IGNORED">已忽略 (Ignored)</Radio.Button>
         </Radio.Group>
       </div>
 
+      {/* 批量操作按钮区域 - 放在表格上方 */}
+      {((statusFilter === 'CLAIMED' && selectedRowKeys.length > 0) ||
+        (isAdmin && statusFilter === 'REVIEWED')) && (
+        <div style={{ marginBottom: 16, padding: '12px 16px', background: '#f0f2f5', borderRadius: 4 }}>
+          <Space>
+            {statusFilter === 'CLAIMED' && selectedRowKeys.length > 0 && (
+              <>
+                <Button
+                  type="primary"
+                  icon={<CheckOutlined />}
+                  loading={syncing}
+                  onClick={() => handleBatchReview('REVIEWED')}
+                >
+                  批量确认 ({selectedRowKeys.length})
+                </Button>
+                <Button
+                  danger
+                  icon={<CloseOutlined />}
+                  loading={syncing}
+                  onClick={() => handleBatchReview('IGNORED')}
+                >
+                  批量忽略 ({selectedRowKeys.length})
+                </Button>
+              </>
+            )}
+            {isAdmin && statusFilter === 'REVIEWED' && (
+              <>
+                {selectedRowKeys.length > 0 && (
+                  <Button
+                    type="primary"
+                    icon={<CloudUploadOutlined />}
+                    loading={syncing}
+                    onClick={handleSync}
+                  >
+                    批量入库 ({selectedRowKeys.length})
+                  </Button>
+                )}
+                <Popconfirm
+                  title="确定要将当前所有已审核数据入库吗？"
+                  description={`共 ${activeTab === 'keywords' ? data.length : rulesData.length} 条数据`}
+                  onConfirm={handleSyncAll}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button
+                    type="default"
+                    icon={<CloudUploadOutlined />}
+                    loading={syncing}
+                  >
+                    全量入库 ({activeTab === 'keywords' ? data.length : rulesData.length})
+                  </Button>
+                </Popconfirm>
+              </>
+            )}
+          </Space>
+        </div>
+      )}
+
       <Tabs activeKey={activeTab} onChange={(key) => { setActiveTab(key); setSelectedRowKeys([]); }} type="card">
         <TabPane tab="敏感词审核" key="keywords">
             <Table
-                rowSelection={statusFilter === 'REVIEWED' && isAdmin ? rowSelection : undefined}
+                rowSelection={(statusFilter === 'REVIEWED' && isAdmin) || statusFilter === 'CLAIMED' ? rowSelection : undefined}
                 columns={keywordColumns}
                 dataSource={data}
                 rowKey="id"
                 loading={loading}
-                pagination={{ pageSize: 10 }}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                  showTotal: (total) => `共 ${total} 条`
+                }}
             />
         </TabPane>
         <TabPane tab="规则审核" key="rules">
             <Table
-                rowSelection={statusFilter === 'REVIEWED' && isAdmin ? rowSelection : undefined}
+                rowSelection={(statusFilter === 'REVIEWED' && isAdmin) || statusFilter === 'CLAIMED' ? rowSelection : undefined}
                 columns={rulesColumns}
                 dataSource={rulesData}
                 rowKey="id"
                 loading={loading}
-                pagination={{ pageSize: 10 }}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                  showTotal: (total) => `共 ${total} 条`
+                }}
             />
         </TabPane>
       </Tabs>

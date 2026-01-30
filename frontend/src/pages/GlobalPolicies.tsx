@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Tag, Row, Col } from 'antd';
+import { Table, Button, Modal, Form, Select, Switch, Space, message, Popconfirm, Tag, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { RuleGlobalDefault } from '../types';
-import { globalPoliciesApi } from '../api';
+import { RuleGlobalDefault, MetaTag } from '../types';
+import { globalPoliciesApi, metaTagsApi } from '../api';
 
 const GlobalPoliciesPage: React.FC = () => {
   const [policies, setPolicies] = useState<RuleGlobalDefault[]>([]);
+  const [tags, setTags] = useState<MetaTag[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [form] = Form.useForm();
 
   useEffect(() => {
     fetchPolicies();
+    fetchTags();
   }, []);
 
   const fetchPolicies = async () => {
@@ -25,6 +27,15 @@ const GlobalPoliciesPage: React.FC = () => {
       message.error('获取全局默认规则失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const res = await metaTagsApi.getAll();
+      setTags(res.data.filter((tag: MetaTag) => tag.is_active));
+    } catch (error) {
+      console.error('Failed to fetch tags', error);
     }
   };
 
@@ -137,13 +148,23 @@ const GlobalPoliciesPage: React.FC = () => {
         cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item 
-            name="tag_code" 
-            label="标签编码 (Tag Code)" 
-            rules={[{ required: true, message: '请输入标签编码' }]}
-            help="该默认规则适用的分类标签（如：POLITICS）。"
+          <Form.Item
+            name="tag_code"
+            label="标签编码 (Tag Code)"
+            rules={[{ required: true, message: '请选择标签编码' }]}
+            help="该默认规则适用的分类标签。"
           >
-            <Input placeholder="例如：POLITICS" />
+            <Select
+              placeholder="请选择标签"
+              showSearch
+              optionFilterProp="children"
+            >
+              {tags.map(tag => (
+                <Select.Option key={tag.tag_code} value={tag.tag_code}>
+                  {tag.tag_name} ({tag.tag_code})
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Row gutter={16}>

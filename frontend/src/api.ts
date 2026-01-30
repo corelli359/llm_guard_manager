@@ -105,6 +105,7 @@ export const stagingApi = {
     reviewKeyword: (id: string, data: any) => api.patch(`/staging/keywords/${id}`, data),
     deleteKeyword: (id: string) => api.delete(`/staging/keywords/${id}`),
     syncKeywords: (ids: string[]) => api.post('/staging/keywords/sync', { ids }),
+    batchReviewKeywords: (items: any[]) => api.post('/staging/keywords/batch-review', { items }),
     importMock: () => api.post('/staging/keywords/import-mock'),
 
     listRules: (status?: string, myTasks?: boolean) => {
@@ -118,6 +119,7 @@ export const stagingApi = {
     reviewRule: (id: string, data: any) => api.patch(`/staging/rules/${id}`, data),
     deleteRule: (id: string) => api.delete(`/staging/rules/${id}`),
     syncRules: (ids: string[]) => api.post('/staging/rules/sync', { ids }),
+    batchReviewRules: (items: any[]) => api.post('/staging/rules/batch-review', { items }),
     importMockRules: () => api.post('/staging/rules/import-mock'),
 
     // 批量认领

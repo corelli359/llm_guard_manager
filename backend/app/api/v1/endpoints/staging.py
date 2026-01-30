@@ -4,11 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_
 from app.core.db import get_db
 from app.api.v1.deps import get_current_user
-from app.models.db_meta import StagingGlobalKeywords, GlobalKeywords, StagingGlobalRules, RuleGlobalDefaults
+from app.models.db_meta import StagingGlobalKeywords, GlobalKeywords, StagingGlobalRules, RuleGlobalDefaults, User
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import uuid
 import pytz
+import logging
+
+logger = logging.getLogger(__name__)
 
 # 中国时区
 CHINA_TZ = pytz.timezone('Asia/Shanghai')
@@ -62,9 +65,26 @@ class StagingReviewRequest(BaseModel):
     final_risk: Optional[str] = None
     status: str # REVIEWED or IGNORED
 
+class BatchReviewItem(BaseModel):
+    id: str
+    final_tag: Optional[str] = None
+    final_risk: Optional[str] = None
+    status: str
+
+class BatchReviewRequest(BaseModel):
+    items: List[BatchReviewItem]
+
 class StagingRuleReviewRequest(BaseModel):
     final_strategy: str
     status: str
+
+class BatchRuleReviewItem(BaseModel):
+    id: str
+    final_strategy: str
+    status: str
+
+class BatchRuleReviewRequest(BaseModel):
+    items: List[BatchRuleReviewItem]
 
 class SyncRequest(BaseModel):
     ids: List[str]
@@ -78,9 +98,34 @@ async def list_staging_keywords(
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ):
+    # 获取用户角色
+    # llm_guard 是硬编码的管理员，不在数据库中
+    if current_user == "llm_guard":
+        user_role = "ADMIN"
+    else:
+        user_stmt = select(User).where(User.username == current_user)
+        user_result = await db.execute(user_stmt)
+        user = user_result.scalars().first()
+        user_role = user.role if user else "AUDITOR"
+
+    # 调试日志
+    logger.info(f"[KEYWORDS] current_user: {current_user}, user_role: {user_role}, status: {status}")
+
     stmt = select(StagingGlobalKeywords)
     if status:
         stmt = stmt.where(StagingGlobalKeywords.status == status)
+
+    # 权限控制：审核员只能看到自己的任务
+    if user_role == "AUDITOR":
+        if status in ["REVIEWED", "IGNORED"]:
+            # 审核员查看已审核/已忽略时，只显示自己的
+            stmt = stmt.where(StagingGlobalKeywords.annotator == current_user)
+        elif status == "CLAIMED":
+            # 审核员查看已认领时，只显示自己的
+            stmt = stmt.where(StagingGlobalKeywords.claimed_by == current_user)
+        # PENDING 状态所有人都可以看到（用于领取任务）
+        # SYNCED 状态审核员不应该看到（前端会隐藏这个选项）
+
     if my_tasks:
         # 只显示当前用户认领的任务（CLAIMED状态）
         stmt = stmt.where(
@@ -124,10 +169,54 @@ async def review_keyword(
         item.is_modified = True
     else:
         item.is_modified = False
-    
+
     await db.commit()
     await db.refresh(item)
     return item
+
+@router.post("/keywords/batch-review")
+async def batch_review_keywords(
+    batch_data: BatchReviewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    """批量审核关键词"""
+    success_count = 0
+    failed_ids = []
+
+    for item_data in batch_data.items:
+        try:
+            stmt = select(StagingGlobalKeywords).where(StagingGlobalKeywords.id == item_data.id)
+            result = await db.execute(stmt)
+            item = result.scalars().first()
+
+            if not item:
+                failed_ids.append(item_data.id)
+                continue
+
+            # 更新字段
+            if item_data.final_tag:
+                item.final_tag = item_data.final_tag
+            if item_data.final_risk:
+                item.final_risk = item_data.final_risk
+
+            item.status = item_data.status
+            item.annotator = current_user
+            item.annotated_at = get_china_now()
+            item.is_modified = True
+
+            success_count += 1
+        except Exception as e:
+            failed_ids.append(item_data.id)
+            continue
+
+    await db.commit()
+
+    return {
+        "success_count": success_count,
+        "failed_count": len(failed_ids),
+        "failed_ids": failed_ids
+    }
 
 @router.post("/keywords/sync")
 async def sync_keywords(
@@ -215,9 +304,32 @@ async def list_staging_rules(
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ):
+    # 获取用户角色
+    # llm_guard 是硬编码的管理员，不在数据库中
+    if current_user == "llm_guard":
+        user_role = "ADMIN"
+    else:
+        user_stmt = select(User).where(User.username == current_user)
+        user_result = await db.execute(user_stmt)
+        user = user_result.scalars().first()
+        user_role = user.role if user else "AUDITOR"
+
+    # 调试日志
+    logger.info(f"[RULES] current_user: {current_user}, user_role: {user_role}, status: {status}")
+
     stmt = select(StagingGlobalRules)
     if status:
         stmt = stmt.where(StagingGlobalRules.status == status)
+
+    # 权限控制：审核员只能看到自己的任务
+    if user_role == "AUDITOR":
+        if status in ["REVIEWED", "IGNORED"]:
+            # 审核员查看已审核/已忽略时，只显示自己的
+            stmt = stmt.where(StagingGlobalRules.annotator == current_user)
+        elif status == "CLAIMED":
+            # 审核员查看已认领时，只显示自己的
+            stmt = stmt.where(StagingGlobalRules.claimed_by == current_user)
+
     if my_tasks:
         # 只显示当前用户认领的任务（CLAIMED状态）
         stmt = stmt.where(
@@ -256,10 +368,50 @@ async def review_rule(
         item.is_modified = True
     else:
         item.is_modified = False
-        
+
     await db.commit()
     await db.refresh(item)
     return item
+
+@router.post("/rules/batch-review")
+async def batch_review_rules(
+    batch_data: BatchRuleReviewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    """批量审核规则"""
+    success_count = 0
+    failed_ids = []
+
+    for item_data in batch_data.items:
+        try:
+            stmt = select(StagingGlobalRules).where(StagingGlobalRules.id == item_data.id)
+            result = await db.execute(stmt)
+            item = result.scalars().first()
+
+            if not item:
+                failed_ids.append(item_data.id)
+                continue
+
+            # 更新字段
+            item.final_strategy = item_data.final_strategy
+            item.status = item_data.status
+            item.annotator = current_user
+            item.annotated_at = get_china_now()
+            item.is_modified = True
+
+            success_count += 1
+        except Exception as e:
+            failed_ids.append(item_data.id)
+            continue
+
+    await db.commit()
+
+    return {
+        "success_count": success_count,
+        "failed_count": len(failed_ids),
+        "failed_ids": failed_ids
+    }
 
 @router.post("/rules/sync")
 async def sync_rules(
