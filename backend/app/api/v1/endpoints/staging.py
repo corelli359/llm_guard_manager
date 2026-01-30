@@ -89,7 +89,11 @@ async def list_staging_keywords(
                 StagingGlobalKeywords.status == "CLAIMED"
             )
         )
-    stmt = stmt.order_by(StagingGlobalKeywords.created_at.desc())
+        # 按照认领时间排序，保持同一批次的任务顺序
+        stmt = stmt.order_by(StagingGlobalKeywords.claimed_at.asc(), StagingGlobalKeywords.id.asc())
+    else:
+        # 非我的任务，按照创建时间排序
+        stmt = stmt.order_by(StagingGlobalKeywords.created_at.desc())
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -222,7 +226,11 @@ async def list_staging_rules(
                 StagingGlobalRules.status == "CLAIMED"
             )
         )
-    stmt = stmt.order_by(StagingGlobalRules.created_at.desc())
+        # 按照认领时间排序，保持同一批次的任务顺序
+        stmt = stmt.order_by(StagingGlobalRules.claimed_at.asc(), StagingGlobalRules.id.asc())
+    else:
+        # 非我的任务，按照创建时间排序
+        stmt = stmt.order_by(StagingGlobalRules.created_at.desc())
     result = await db.execute(stmt)
     return result.scalars().all()
 
