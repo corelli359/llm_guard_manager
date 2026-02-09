@@ -21,6 +21,74 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle 401/403 errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired, clear local storage and redirect to login
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('current_app_id');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * 统一错误信息提取
+ * 根据 HTTP 状态码和后端 detail 返回友好的中文提示
+ */
+export function getErrorMessage(error: any, fallback: string = '操作失败'): string {
+  if (!error.response) {
+    return '网络连接失败，请检查网络';
+  }
+
+  const status = error.response.status;
+  const detail = error.response.data?.detail;
+
+  switch (status) {
+    case 400:
+      return detail || '请求参数错误';
+    case 401:
+      return '登录已过期，请重新登录';
+    case 403:
+      // 解析后端权限错误的 detail
+      if (detail?.includes('Missing permission')) {
+        const match = detail.match(/Missing permission: (\w+) for scenario: (.+)/);
+        if (match) {
+          const permLabels: Record<string, string> = {
+            scenario_keywords: '场景敏感词管理',
+            scenario_policies: '场景策略管理',
+            scenario_basic_info: '场景基本信息',
+            playground: '输入试验场',
+            performance_test: '性能测试',
+          };
+          const permName = permLabels[match[1]] || match[1];
+          return `权限不足：您没有「${permName}」的权限`;
+        }
+      }
+      if (detail?.includes('No access to scenario')) {
+        return '权限不足：您没有该场景的访问权限';
+      }
+      if (detail?.includes('Not authorized')) {
+        return '权限不足：您无权执行此操作';
+      }
+      return detail ? `权限不足：${detail}` : '权限不足：您无权执行此操作';
+    case 404:
+      return detail || '请求的资源不存在';
+    case 409:
+      return detail || '数据冲突，请刷新后重试';
+    case 422:
+      return '数据格式错误，请检查输入';
+    case 500:
+      return '服务器内部错误，请稍后重试';
+    default:
+      return detail || fallback;
+  }
+}
+
 export const metaTagsApi = {
   getAll: () => api.get<MetaTag[]>('/tags/'),
   create: (data: Omit<MetaTag, 'id'>) => api.post<MetaTag>('/tags/', data),
@@ -87,10 +155,26 @@ export const performanceApi = {
 
 export const usersApi = {
     list: () => api.get('/users/'),
-    create: (data: any) => api.post('/users/', data),
+    updateRole: (id: string, role: string) => api.put(`/users/${id}/role`, { role }),
     updateStatus: (id: string, active: boolean) => api.patch(`/users/${id}/status`, { is_active: active }),
-    resetPassword: (id: string) => api.post(`/users/${id}/reset-password`),
     delete: (id: string) => api.delete(`/users/${id}`),
+};
+
+export const rolesApi = {
+    list: () => api.get('/roles/'),
+    create: (data: any) => api.post('/roles/', data),
+    update: (id: string, data: any) => api.put(`/roles/${id}`, data),
+    delete: (id: string) => api.delete(`/roles/${id}`),
+    getPermissions: (id: string) => api.get(`/roles/${id}/permissions`),
+    updatePermissions: (id: string, permissionIds: string[]) => api.put(`/roles/${id}/permissions`, { permission_ids: permissionIds }),
+    listAllPermissions: () => api.get('/roles/permissions/all'),
+};
+
+export const userRolesApi = {
+    getUserRoles: (userId: string) => api.get(`/users/${userId}/roles`),
+    assignRole: (userId: string, data: { role_id: string; scenario_id?: string }) => api.post(`/users/${userId}/roles`, data),
+    removeRole: (userId: string, assignmentId: string) => api.delete(`/users/${userId}/roles/${assignmentId}`),
+    getMyPermissions: () => api.get('/users/me/permissions'),
 };
 
 export const stagingApi = {
@@ -132,6 +216,70 @@ export const stagingApi = {
     getMyTasksStats: (taskType: string) => api.get(`/staging/my-tasks/stats?task_type=${taskType}`),
     // 获取任务总览
     getTaskOverview: (taskType: string) => api.get(`/staging/overview?task_type=${taskType}`),
+};
+
+// Permissions API
+export const permissionsApi = {
+  getMyPermissions: () => api.get('/permissions/me'),
+  checkPermission: (scenarioId: string, permission: string) =>
+    api.get('/permissions/check', { params: { scenario_id: scenarioId, permission } }),
+};
+
+// User Scenarios API
+export const userScenariosApi = {
+  assignScenario: (userId: string, data: any) =>
+    api.post(`/users/${userId}/scenarios`, data),
+  configurePermissions: (userId: string, scenarioId: string, permissions: any) =>
+    api.put(`/users/${userId}/scenarios/${scenarioId}/permissions`, permissions),
+  getUserScenarios: (userId: string) =>
+    api.get(`/users/${userId}/scenarios`),
+  removeScenarioAssignment: (userId: string, scenarioId: string) =>
+    api.delete(`/users/${userId}/scenarios/${scenarioId}`),
+};
+
+// Audit Logs API
+export const auditLogsApi = {
+  queryLogs: (params: any) => api.get('/audit-logs/', { params }),
+};
+
+// SSO API
+export const ssoApi = {
+  // SSO登录（使用Ticket）
+  login: (ticket: string) => api.post<{
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    user_id: string;
+    role: string;
+  }>('/sso/login', { ticket }),
+
+  // 获取当前用户信息
+  getUserInfo: () => api.get<{
+    user_id: string;
+    user_name: string;
+    email?: string;
+    department?: string;
+    phone?: string;
+    role: string;
+    scenarios: any[];
+  }>('/sso/user-info'),
+
+  // 批量获取用户信息
+  getUsersBatch: (userIds: string[]) => api.post<{
+    users: Array<{
+      user_id: string;
+      user_name: string;
+      email?: string;
+      department?: string;
+    }>;
+    not_found: string[];
+  }>('/sso/users/batch', { user_ids: userIds }),
+
+  // SSO健康检查
+  health: () => api.get<{
+    sso_enabled: boolean;
+    usap_healthy: boolean;
+  }>('/sso/health'),
 };
 
 export default api;

@@ -294,6 +294,28 @@ Audit trail for testing with request/response data and latency metrics.
 - Run frontend linter: `cd frontend && npm run lint`
 - Build frontend to verify: `cd frontend && npm run build`
 
+## 工作规则（Working Rules）
+
+### 规则 1: 长文档分段写入
+**写入长文档时必须分段写入，不要一次性写入！**
+- 每次写入控制在合理长度
+- 可以使用 `cat >>` 追加内容
+- 避免因内容过长导致写入失败
+
+### 规则 2: 简单问题直接回答
+**对于简单问题，先给出直接答案，不要过度工程化！**
+- 不要创建不必要的文件
+- 不要做不必要的修改
+- 先回答问题，再问是否需要更多
+
+### 规则 3: 约束优先
+**在实现之前，先确认约束条件！**
+- 是否需要修改代码？
+- 是否只需要配置修改？
+- 使用什么凭据？
+
+---
+
 ## Important Notes
 
 **Async/Await Pattern:**

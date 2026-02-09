@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, Outlet, useNavigate } from 'react-router-dom';
-import { Layout, Menu, theme, Select } from 'antd';
+import { Layout, Menu, theme } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   ExperimentOutlined,
   AppstoreOutlined,
@@ -12,7 +13,9 @@ import {
   ThunderboltOutlined,
   UserOutlined,
   AuditOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  FileTextOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import MetaTagsPage from './pages/MetaTags';
 import GlobalKeywordsPage from './pages/GlobalKeywords';
@@ -27,8 +30,13 @@ import AnnotatorStatsPage from './pages/AnnotatorStats';
 import AppsPage from './pages/Apps';
 import AppDashboard from './pages/AppDashboard';
 import LoginPage from './pages/LoginPage';
+import SSOLogin from './pages/SSOLogin';
+import AuditLogsPage from './pages/AuditLogs';
+import MyScenariosPage from './pages/MyScenarios';
+import RolesPage from './pages/RolesPage';
 import { scenariosApi } from './api';
-import { ScenarioApp } from './types';
+import { PermissionProvider } from './contexts/PermissionContext';
+import { usePermission } from './hooks/usePermission';
 
 // Placeholder components
 const Dashboard = () => <div><h2>欢迎使用 LLM Guard 管理平台</h2><p>请从左侧菜单选择应用进行管理，或前往“应用管理”创建新应用。</p></div>;
@@ -51,8 +59,8 @@ const AppLayout: React.FC = () => {
   } = theme.useToken();
   const location = useLocation();
   const navigate = useNavigate();
+  const { userRole, userPermissions, hasRole, hasPermission } = usePermission();
 
-  const [apps, setApps] = useState<ScenarioApp[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(localStorage.getItem('current_app_id'));
 
   useEffect(() => {
@@ -62,7 +70,6 @@ const AppLayout: React.FC = () => {
   const fetchApps = async () => {
     try {
         const res = await scenariosApi.getAll();
-        setApps(res.data);
         // If current selected app is not in the list (e.g. deleted), clear it
         if (selectedAppId && !res.data.find(app => app.app_id === selectedAppId)) {
             setSelectedAppId(null);
@@ -73,13 +80,6 @@ const AppLayout: React.FC = () => {
     }
   };
 
-  const handleAppChange = (value: string) => {
-    setSelectedAppId(value);
-    localStorage.setItem('current_app_id', value);
-    // Optionally auto-navigate to dashboard when switching app
-    navigate(`/apps/${value}`);
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('current_app_id');
@@ -87,116 +87,149 @@ const AppLayout: React.FC = () => {
     navigate('/login');
   };
 
-  const userRole = localStorage.getItem('user_role') || 'AUDITOR';
+  // Construct Menu Items based on permissions
+  const menuItems: MenuProps['items'] = useMemo(() => {
+    const items: MenuProps['items'] = [];
 
-  // Construct Menu Items
-  const menuItems: any[] = [];
-
-  // Common: Smart Labeling
-  menuItems.push({
-      key: '/smart-labeling',
-      icon: <AuditOutlined />,
-      label: <Link to="/smart-labeling">智能标注</Link>,
-  });
-
-  // Admin: Annotator Statistics
-  if (userRole === 'ADMIN') {
-      menuItems.push({
-          key: '/annotator-stats',
-          icon: <BarChartOutlined />,
-          label: <Link to="/annotator-stats">标注统计</Link>,
+    if (hasPermission('smart_labeling')) {
+      items.push({
+        key: '/smart-labeling',
+        icon: <AuditOutlined />,
+        label: <Link to="/smart-labeling">智能标注</Link>,
       });
-  }
+    }
 
-  if (userRole === 'ADMIN') {
-      menuItems.push({
+    if (hasPermission('annotator_stats')) {
+      items.push({
+        key: '/annotator-stats',
+        icon: <BarChartOutlined />,
+        label: <Link to="/annotator-stats">标注统计</Link>,
+      });
+    }
+
+    const systemChildren: any[] = [];
+    if (hasPermission('user_management')) {
+      systemChildren.push({
+        key: '/users',
+        icon: <UserOutlined />,
+        label: <Link to="/users">用户管理</Link>,
+      });
+    }
+    if (hasPermission('role_management')) {
+      systemChildren.push({
+        key: '/roles',
+        icon: <TeamOutlined />,
+        label: <Link to="/roles">角色管理</Link>,
+      });
+    }
+    if (hasPermission('audit_logs')) {
+      systemChildren.push({
+        key: '/audit-logs',
+        icon: <FileTextOutlined />,
+        label: <Link to="/audit-logs">审计日志</Link>,
+      });
+    }
+    if (systemChildren.length > 0) {
+      items.push({ type: 'group', label: '系统管理', children: systemChildren });
+    }
+
+    const globalChildren: any[] = [];
+    if (hasPermission('app_management')) {
+      globalChildren.push({
+        key: '/apps',
+        icon: <AppstoreOutlined />,
+        label: <Link to="/apps">应用管理</Link>,
+      });
+    }
+    if (hasPermission('tag_management')) {
+      globalChildren.push({
+        key: '/tags',
+        icon: <TagsOutlined />,
+        label: <Link to="/tags">标签管理</Link>,
+      });
+    }
+    if (hasPermission('global_keywords')) {
+      globalChildren.push({
+        key: '/global-keywords',
+        icon: <GlobalOutlined />,
+        label: <Link to="/global-keywords">全局敏感词</Link>,
+      });
+    }
+    if (hasPermission('global_policies')) {
+      globalChildren.push({
+        key: '/global-policies',
+        icon: <SafetyCertificateOutlined />,
+        label: <Link to="/global-policies">全局默认规则</Link>,
+      });
+    }
+    if (globalChildren.length > 0) {
+      items.push({ type: 'group', label: '全局配置', children: globalChildren });
+    }
+
+    const toolChildren: any[] = [];
+    if (hasPermission('playground')) {
+      toolChildren.push({
+        key: '/playground',
+        icon: <ExperimentOutlined />,
+        label: <Link to="/playground">输入试验场</Link>,
+      });
+    }
+    if (hasPermission('performance_test')) {
+      toolChildren.push({
+        key: '/performance',
+        icon: <ThunderboltOutlined />,
+        label: <Link to="/performance">性能测试</Link>,
+      });
+    }
+    if (toolChildren.length > 0) {
+      items.push({ type: 'group', label: '测试工具', children: toolChildren });
+    }
+
+    if (hasRole(['SCENARIO_ADMIN', 'ANNOTATOR'])) {
+      const myScenarios = userPermissions?.scenario_permissions
+        ? Object.keys(userPermissions.scenario_permissions)
+        : [];
+      if (myScenarios.length > 0) {
+        items.push({ type: 'divider' });
+        items.push({
+          key: '/my-scenarios',
+          icon: <AppstoreOutlined />,
+          label: <Link to="/my-scenarios">我的场景</Link>,
+        });
+      }
+    }
+
+    if (selectedAppId && hasPermission('app_management')) {
+      items.push({ type: 'divider' });
+      items.push({
         type: 'group',
-        label: '系统管理',
+        label: `当前应用: ${selectedAppId}`,
         children: [
-            {
-                key: '/users',
-                icon: <UserOutlined />,
-                label: <Link to="/users">用户管理</Link>,
-            }
-        ]
+          {
+            key: `/apps/${selectedAppId}`,
+            icon: <DashboardOutlined />,
+            label: <Link to={`/apps/${selectedAppId}`}>应用概览</Link>,
+          },
+          {
+            key: `/apps/${selectedAppId}/policies`,
+            icon: <SafetyCertificateOutlined />,
+            label: <Link to={`/apps/${selectedAppId}/policies`}>场景策略管理</Link>,
+          },
+        ],
       });
+    }
 
-      menuItems.push({
-        type: 'group',
-        label: '全局配置',
-        children: [
-            {
-                key: '/apps',
-                icon: <AppstoreOutlined />,
-                label: <Link to="/apps">应用管理</Link>,
-            },
-            {
-                key: '/tags',
-                icon: <TagsOutlined />,
-                label: <Link to="/tags">标签管理</Link>,
-            },
-            {
-                key: '/global-keywords',
-                icon: <GlobalOutlined />,
-                label: <Link to="/global-keywords">全局敏感词</Link>,
-            },
-            {
-                key: '/global-policies',
-                icon: <SafetyCertificateOutlined />,
-                label: <Link to="/global-policies">全局默认规则</Link>,
-            },
-        ]
-      });
-
-      menuItems.push({
-        type: 'group',
-        label: '测试工具',
-        children: [
-            {
-            key: '/playground',
-            icon: <ExperimentOutlined />,
-            label: <Link to="/playground">输入试验场</Link>,
-            },
-            {
-            key: '/performance',
-            icon: <ThunderboltOutlined />,
-            label: <Link to="/performance">性能测试</Link>,
-            },
-        ]
-      });
-  }
-
-  if (selectedAppId && userRole === 'ADMIN') {
-      menuItems.push({
-          type: 'divider'
-      });
-      menuItems.push({
-          type: 'group',
-          label: `当前应用: ${selectedAppId}`,
-          children: [
-            {
-                key: `/apps/${selectedAppId}`,
-                icon: <DashboardOutlined />,
-                label: <Link to={`/apps/${selectedAppId}`}>应用概览</Link>,
-            },
-            {
-                key: `/apps/${selectedAppId}/policies`,
-                icon: <SafetyCertificateOutlined />,
-                label: <Link to={`/apps/${selectedAppId}/policies`}>场景策略管理</Link>,
-            },
-          ]
-      });
-  }
-  
-  // Append Logout at the end
-  menuItems.push({ type: 'divider' });
-  menuItems.push({
+    items.push({ type: 'divider' });
+    items.push({
       key: '/logout',
       icon: <LoginOutlined />,
       label: '退出登录',
       onClick: handleLogout,
-      danger: true
-  });
+      danger: true,
+    });
+
+    return items;
+  }, [userRole, userPermissions, selectedAppId, hasRole, hasPermission]);
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -206,18 +239,6 @@ const AppLayout: React.FC = () => {
       >
         <div style={{ padding: '16px', color: 'white', fontWeight: 'bold', fontSize: '18px', textAlign: 'center' }}>
             LLM Guard 管理平台
-        </div>
-        
-        <div style={{ padding: '0 16px 16px 16px' }}>
-            <Select
-                style={{ width: '100%' }}
-                placeholder="请选择应用..."
-                value={selectedAppId}
-                onChange={handleAppChange}
-                options={apps.map(app => ({ label: app.app_name, value: app.app_id }))}
-                loading={apps.length === 0}
-                notFoundContent="未找到应用"
-            />
         </div>
 
         <Menu
@@ -242,20 +263,23 @@ const AppLayout: React.FC = () => {
               {/* Nested routes for AppLayout, rendered via Outlet in AuthLayout */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/apps" element={<AppsPage />} />
-              
+
               {/* App Specific Routes */}
               <Route path="/apps/:appId" element={<AppDashboard />} />
               <Route path="/apps/:appId/keywords" element={<ScenarioKeywordsPage />} />
               <Route path="/apps/:appId/policies" element={<ScenarioPoliciesPage />} />
-              
+
               <Route path="/tags" element={<MetaTagsPage />} />
               <Route path="/global-keywords" element={<GlobalKeywordsPage />} />
               <Route path="/global-policies" element={<GlobalPoliciesPage />} />
               <Route path="/playground" element={<InputPlaygroundPage />} />
               <Route path="/performance" element={<PerformanceTestPage />} />
               <Route path="/users" element={<UsersPage />} />
+              <Route path="/roles" element={<RolesPage />} />
               <Route path="/smart-labeling" element={<SmartLabelingPage />} />
               <Route path="/annotator-stats" element={<AnnotatorStatsPage />} />
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/my-scenarios" element={<MyScenariosPage />} />
             </Routes>
           </div>
         </Content>
@@ -269,14 +293,17 @@ const AppLayout: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <Router basename={import.meta.env.BASE_URL}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<AuthLayout />}>
-          <Route path="/*" element={<AppLayout />} /> {/* Catch all other routes under AuthLayout */}
-        </Route>
-      </Routes>
-    </Router>
+    <PermissionProvider>
+      <Router basename={import.meta.env.BASE_URL}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/sso/login" element={<SSOLogin />} />
+          <Route element={<AuthLayout />}>
+            <Route path="/*" element={<AppLayout />} /> {/* Catch all other routes under AuthLayout */}
+          </Route>
+        </Routes>
+      </Router>
+    </PermissionProvider>
   );
 };
 

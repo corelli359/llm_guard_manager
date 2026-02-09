@@ -19,13 +19,18 @@ class RuleScenarioPolicyRepository(BaseRepository[RuleScenarioPolicy]):
         return result.scalars().first()
 
 class RuleGlobalDefaultsRepository(BaseRepository[RuleGlobalDefaults]):
-    async def get_duplicate(self, tag_code: str, extra_condition: Optional[str]) -> Optional[RuleGlobalDefaults]:
-        query = select(self.model).where(self.model.tag_code == tag_code)
-        
+    async def get_duplicate(self, tag_code: str | None, extra_condition: str | None) -> RuleGlobalDefaults | None:
+        # Build query based on tag_code
+        if tag_code:
+            query = select(self.model).where(self.model.tag_code == tag_code)
+        else:
+            query = select(self.model).where(self.model.tag_code.is_(None) | (self.model.tag_code == ''))
+
+        # Add extra_condition filter
         if extra_condition:
             query = query.where(self.model.extra_condition == extra_condition)
         else:
             query = query.where(self.model.extra_condition.is_(None) | (self.model.extra_condition == ''))
-            
+
         result = await self.db.execute(query)
         return result.scalars().first()

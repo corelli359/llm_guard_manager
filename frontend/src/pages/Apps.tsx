@@ -3,7 +3,7 @@ import { Table, Button, Modal, Form, Input, Switch, Space, message, Popconfirm, 
 import { PlusOutlined, EditOutlined, DeleteOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { ScenarioApp } from '../types';
-import { scenariosApi } from '../api';
+import { scenariosApi, getErrorMessage } from '../api';
 
 const AppsPage: React.FC = () => {
   const [apps, setApps] = useState<ScenarioApp[]>([]);
@@ -18,8 +18,8 @@ const AppsPage: React.FC = () => {
     try {
       const res = await scenariosApi.getAll();
       setApps(res.data);
-    } catch (error) {
-      message.error('获取应用列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取应用列表失败'));
     } finally {
       setLoading(false);
     }
@@ -52,8 +52,8 @@ const AppsPage: React.FC = () => {
       await scenariosApi.delete(id);
       message.success('应用已注销');
       fetchApps();
-    } catch (error) {
-      message.error('删除失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '删除失败'));
     }
   };
 

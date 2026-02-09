@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_
 from app.core.db import get_db
-from app.api.v1.deps import get_current_user
+from app.api.v1.deps import get_current_user, get_current_user_full
 from app.models.db_meta import StagingGlobalKeywords, GlobalKeywords, StagingGlobalRules, RuleGlobalDefaults, User
 from pydantic import BaseModel
 from datetime import datetime, timedelta
@@ -96,41 +96,38 @@ async def list_staging_keywords(
     status: Optional[str] = None,
     my_tasks: bool = Query(False, description="只显示我认领的任务"),
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
-    # 获取用户角色
-    # llm_guard 是硬编码的管理员，不在数据库中
-    if current_user == "llm_guard":
-        user_role = "ADMIN"
-    else:
-        user_stmt = select(User).where(User.username == current_user)
-        user_result = await db.execute(user_stmt)
-        user = user_result.scalars().first()
-        user_role = user.role if user else "AUDITOR"
+    """
+    获取智能标注关键词列表
+    权限：所有角色可访问，但根据角色过滤数据
+    """
+    user_role = current_user.role
 
     # 调试日志
-    logger.info(f"[KEYWORDS] current_user: {current_user}, user_role: {user_role}, status: {status}")
+    logger.info(f"[KEYWORDS] current_user: {current_user.username}, user_role: {user_role}, status: {status}")
 
     stmt = select(StagingGlobalKeywords)
     if status:
         stmt = stmt.where(StagingGlobalKeywords.status == status)
 
-    # 权限控制：审核员只能看到自己的任务
-    if user_role == "AUDITOR":
+    # 权限控制：ANNOTATOR 只能看到自己的任务
+    if user_role == "ANNOTATOR":
         if status in ["REVIEWED", "IGNORED"]:
-            # 审核员查看已审核/已忽略时，只显示自己的
-            stmt = stmt.where(StagingGlobalKeywords.annotator == current_user)
+            # 标注员查看已审核/已忽略时，只显示自己的
+            stmt = stmt.where(StagingGlobalKeywords.annotator == current_user.username)
         elif status == "CLAIMED":
-            # 审核员查看已认领时，只显示自己的
-            stmt = stmt.where(StagingGlobalKeywords.claimed_by == current_user)
+            # 标注员查看已认领时，只显示自己的
+            stmt = stmt.where(StagingGlobalKeywords.claimed_by == current_user.username)
         # PENDING 状态所有人都可以看到（用于领取任务）
-        # SYNCED 状态审核员不应该看到（前端会隐藏这个选项）
+        # SYNCED 状态标注员不应该看到（前端会隐藏这个选项）
+    # SYSTEM_ADMIN 和 AUDITOR 可以看到所有数据
 
     if my_tasks:
         # 只显示当前用户认领的任务（CLAIMED状态）
         stmt = stmt.where(
             and_(
-                StagingGlobalKeywords.claimed_by == current_user,
+                StagingGlobalKeywords.claimed_by == current_user.username,
                 StagingGlobalKeywords.status == "CLAIMED"
             )
         )
@@ -147,21 +144,22 @@ async def review_keyword(
     keyword_id: str,
     review_data: StagingReviewRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
+    """审核关键词（ANNOTATOR 和 SYSTEM_ADMIN）"""
     stmt = select(StagingGlobalKeywords).where(StagingGlobalKeywords.id == keyword_id)
     result = await db.execute(stmt)
     item = result.scalars().first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-        
+
     if review_data.final_tag:
         item.final_tag = review_data.final_tag
     if review_data.final_risk:
         item.final_risk = review_data.final_risk
-        
+
     item.status = review_data.status
-    item.annotator = current_user
+    item.annotator = current_user.username
     item.annotated_at = get_china_now()
 
     # Check modification
@@ -178,9 +176,9 @@ async def review_keyword(
 async def batch_review_keywords(
     batch_data: BatchReviewRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
-    """批量审核关键词"""
+    """批量审核关键词（ANNOTATOR 和 SYSTEM_ADMIN）"""
     success_count = 0
     failed_ids = []
 
@@ -201,7 +199,7 @@ async def batch_review_keywords(
                 item.final_risk = item_data.final_risk
 
             item.status = item_data.status
-            item.annotator = current_user
+            item.annotator = current_user.username
             item.annotated_at = get_china_now()
             item.is_modified = True
 
@@ -222,10 +220,11 @@ async def batch_review_keywords(
 async def sync_keywords(
     sync_req: SyncRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
-    if current_user != "llm_guard":
-        raise HTTPException(status_code=403, detail="Only admin can sync")
+    """同步关键词到正式库（仅 SYSTEM_ADMIN）"""
+    if current_user.role != "SYSTEM_ADMIN":
+        raise HTTPException(status_code=403, detail="Only SYSTEM_ADMIN can sync")
         
     stmt = select(StagingGlobalKeywords).where(StagingGlobalKeywords.id.in_(sync_req.ids))
     result = await db.execute(stmt)
@@ -302,39 +301,35 @@ async def list_staging_rules(
     status: Optional[str] = None,
     my_tasks: bool = Query(False, description="只显示我认领的任务"),
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
-    # 获取用户角色
-    # llm_guard 是硬编码的管理员，不在数据库中
-    if current_user == "llm_guard":
-        user_role = "ADMIN"
-    else:
-        user_stmt = select(User).where(User.username == current_user)
-        user_result = await db.execute(user_stmt)
-        user = user_result.scalars().first()
-        user_role = user.role if user else "AUDITOR"
+    """
+    获取智能标注规则列表
+    权限：所有角色可访问，但根据角色过滤数据
+    """
+    user_role = current_user.role
 
     # 调试日志
-    logger.info(f"[RULES] current_user: {current_user}, user_role: {user_role}, status: {status}")
+    logger.info(f"[RULES] current_user: {current_user.username}, user_role: {user_role}, status: {status}")
 
     stmt = select(StagingGlobalRules)
     if status:
         stmt = stmt.where(StagingGlobalRules.status == status)
 
-    # 权限控制：审核员只能看到自己的任务
-    if user_role == "AUDITOR":
+    # 权限控制：ANNOTATOR 只能看到自己的任务
+    if user_role == "ANNOTATOR":
         if status in ["REVIEWED", "IGNORED"]:
-            # 审核员查看已审核/已忽略时，只显示自己的
-            stmt = stmt.where(StagingGlobalRules.annotator == current_user)
+            # 标注员查看已审核/已忽略时，只显示自己的
+            stmt = stmt.where(StagingGlobalRules.annotator == current_user.username)
         elif status == "CLAIMED":
-            # 审核员查看已认领时，只显示自己的
-            stmt = stmt.where(StagingGlobalRules.claimed_by == current_user)
+            # 标注员查看已认领时，只显示自己的
+            stmt = stmt.where(StagingGlobalRules.claimed_by == current_user.username)
 
     if my_tasks:
         # 只显示当前用户认领的任务（CLAIMED状态）
         stmt = stmt.where(
             and_(
-                StagingGlobalRules.claimed_by == current_user,
+                StagingGlobalRules.claimed_by == current_user.username,
                 StagingGlobalRules.status == "CLAIMED"
             )
         )
@@ -351,17 +346,18 @@ async def review_rule(
     rule_id: str,
     review_data: StagingRuleReviewRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
+    """审核规则（ANNOTATOR 和 SYSTEM_ADMIN）"""
     stmt = select(StagingGlobalRules).where(StagingGlobalRules.id == rule_id)
     result = await db.execute(stmt)
     item = result.scalars().first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-        
+
     item.final_strategy = review_data.final_strategy
     item.status = review_data.status
-    item.annotator = current_user
+    item.annotator = current_user.username
     item.annotated_at = get_china_now()
 
     if item.final_strategy != item.predicted_strategy:
@@ -377,9 +373,9 @@ async def review_rule(
 async def batch_review_rules(
     batch_data: BatchRuleReviewRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
-    """批量审核规则"""
+    """批量审核规则（ANNOTATOR 和 SYSTEM_ADMIN）"""
     success_count = 0
     failed_ids = []
 
@@ -396,7 +392,7 @@ async def batch_review_rules(
             # 更新字段
             item.final_strategy = item_data.final_strategy
             item.status = item_data.status
-            item.annotator = current_user
+            item.annotator = current_user.username
             item.annotated_at = get_china_now()
             item.is_modified = True
 
@@ -417,10 +413,11 @@ async def batch_review_rules(
 async def sync_rules(
     sync_req: SyncRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
-    if current_user != "llm_guard":
-        raise HTTPException(status_code=403, detail="Only admin can sync")
+    """同步规则到正式库（仅 SYSTEM_ADMIN）"""
+    if current_user.role != "SYSTEM_ADMIN":
+        raise HTTPException(status_code=403, detail="Only SYSTEM_ADMIN can sync")
         
     stmt = select(StagingGlobalRules).where(StagingGlobalRules.id.in_(sync_req.ids))
     result = await db.execute(stmt)
@@ -507,9 +504,9 @@ class ClaimResponse(BaseModel):
 async def claim_batch(
     claim_req: ClaimRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
-    """批量认领任务"""
+    """批量认领任务（ANNOTATOR 和 SYSTEM_ADMIN）"""
     batch_id = str(uuid.uuid4())
     timeout_minutes = 30  # 30分钟超时
     expires_at = get_china_now() + timedelta(minutes=timeout_minutes)
@@ -525,7 +522,7 @@ async def claim_batch(
         # 更新为CLAIMED状态
         for item in items:
             item.status = "CLAIMED"
-            item.claimed_by = current_user
+            item.claimed_by = current_user.username
             item.claimed_at = get_china_now()
             item.batch_id = batch_id
     else:
@@ -538,7 +535,7 @@ async def claim_batch(
 
         for item in items:
             item.status = "CLAIMED"
-            item.claimed_by = current_user
+            item.claimed_by = current_user.username
             item.claimed_at = get_china_now()
             item.batch_id = batch_id
 
@@ -659,14 +656,14 @@ class MyTasksStats(BaseModel):
 async def get_my_tasks_stats(
     task_type: str = Query("keywords", description="keywords or rules"),
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_full)
 ):
     """获取当前用户的任务统计"""
     if task_type == "keywords":
         # 查询当前用户认领的任务
         stmt_claimed = select(StagingGlobalKeywords).where(
             and_(
-                StagingGlobalKeywords.claimed_by == current_user,
+                StagingGlobalKeywords.claimed_by == current_user.username,
                 StagingGlobalKeywords.status == "CLAIMED"
             )
         )
@@ -695,7 +692,7 @@ async def get_my_tasks_stats(
         # 规则任务统计
         stmt_claimed = select(StagingGlobalRules).where(
             and_(
-                StagingGlobalRules.claimed_by == current_user,
+                StagingGlobalRules.claimed_by == current_user.username,
                 StagingGlobalRules.status == "CLAIMED"
             )
         )

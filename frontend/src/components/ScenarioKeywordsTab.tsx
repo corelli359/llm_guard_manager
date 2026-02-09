@@ -3,7 +3,7 @@ import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popc
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { ScenarioKeyword, MetaTag } from '../types';
-import { scenarioKeywordsApi, metaTagsApi } from '../api';
+import { scenarioKeywordsApi, metaTagsApi, getErrorMessage } from '../api';
 
 const { Option } = Select;
 const { Search } = Input;
@@ -23,6 +23,7 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<'all' | 0 | 1>('all');
   const [searchText, setSearchText] = useState<string>('');
+  const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [form] = Form.useForm();
 
   const ruleMode = mode === 'custom' ? 1 : 0;
@@ -49,8 +50,12 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
     try {
       const res = await scenarioKeywordsApi.getByScenario(scenarioId, ruleMode);
       setKeywords(res.data);
-    } catch (error) {
-      message.error('获取场景敏感词失败');
+      setHasAccess(true);
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        setHasAccess(false);
+      }
+      message.error(getErrorMessage(error, '获取场景敏感词失败'));
     } finally {
       setLoading(false);
     }
@@ -60,8 +65,8 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
     try {
       const res = await metaTagsApi.getAll();
       setTags(res.data);
-    } catch (error) {
-      message.error('获取标签列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取标签列表失败'));
     }
   };
 
@@ -106,8 +111,8 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
       await scenarioKeywordsApi.delete(id);
       message.success('敏感词已删除');
       fetchKeywords();
-    } catch (error) {
-      message.error('删除失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -125,12 +130,10 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
       fetchKeywords();
     } catch (error: any) {
       console.error(error);
-      if (error.response && error.response.data && error.response.data.detail) {
-        message.error(`操作失败: ${error.response.data.detail}`);
-      } else if (error.errorFields) {
+      if (error.errorFields) {
         // Form validation error, do nothing
       } else {
-        message.error('操作失败，请重试');
+        message.error(getErrorMessage(error, '操作失败'));
       }
     }
   };
@@ -180,14 +183,14 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
       title: '操作',
       key: 'action',
       width: 150,
-      render: (_: any, record: ScenarioKeyword) => (
+      render: (_: any, record: ScenarioKeyword) => hasAccess ? (
         <Space size="middle">
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
           <Popconfirm title="确定要删除吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button icon={<DeleteOutlined />} danger size="small" />
           </Popconfirm>
         </Space>
-      ),
+      ) : <Tag color="default">无权限</Tag>,
     },
   ];
 
@@ -214,9 +217,11 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
           />
         </Col>
         <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            添加敏感词
-          </Button>
+          {hasAccess && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+              添加敏感词
+            </Button>
+          )}
         </Col>
       </Row>
 

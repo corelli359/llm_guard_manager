@@ -3,7 +3,7 @@ import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popc
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ScenarioKeyword, MetaTag } from '../types';
-import { scenarioKeywordsApi, metaTagsApi } from '../api';
+import { scenarioKeywordsApi, metaTagsApi, getErrorMessage } from '../api';
 
 const { Option } = Select;
 
@@ -46,8 +46,8 @@ const ScenarioKeywordsPage: React.FC = () => {
 
       setKeywords(data);
       setCurrentScenarioId(scenarioId);
-    } catch (error) {
-      message.error('获取场景敏感词失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取场景敏感词失败'));
     } finally {
       setLoading(false);
     }
@@ -57,8 +57,8 @@ const ScenarioKeywordsPage: React.FC = () => {
     try {
       const res = await metaTagsApi.getAll();
       setTags(res.data);
-    } catch (error) {
-      message.error('获取标签列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取标签列表失败'));
     }
   };
 
@@ -103,8 +103,8 @@ const ScenarioKeywordsPage: React.FC = () => {
       await scenarioKeywordsApi.delete(id);
       message.success('敏感词已删除');
       if (currentScenarioId) fetchKeywords(currentScenarioId);
-    } catch (error) {
-      message.error('删除失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -122,12 +122,10 @@ const ScenarioKeywordsPage: React.FC = () => {
       if (currentScenarioId) fetchKeywords(currentScenarioId);
     } catch (error: any) {
       console.error(error);
-      if (error.response && error.response.data && error.response.data.detail) {
-        message.error(`操作失败: ${error.response.data.detail}`);
-      } else if (error.errorFields) {
+      if (error.errorFields) {
          // Form validation error, do nothing
       } else {
-        message.error('操作失败，请重试');
+        message.error(getErrorMessage(error, '操作失败'));
       }
     }
   };

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Switch, Space, message, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { MetaTag } from '../types';
-import { metaTagsApi } from '../api';
+import { metaTagsApi, getErrorMessage } from '../api';
 
 const MetaTagsPage: React.FC = () => {
   const [tags, setTags] = useState<MetaTag[]>([]);
@@ -16,8 +16,8 @@ const MetaTagsPage: React.FC = () => {
     try {
       const res = await metaTagsApi.getAll();
       setTags(res.data);
-    } catch (error) {
-      message.error('获取标签列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取标签列表失败'));
     } finally {
       setLoading(false);
     }
@@ -46,8 +46,8 @@ const MetaTagsPage: React.FC = () => {
       await metaTagsApi.delete(id);
       message.success('标签已删除');
       fetchTags();
-    } catch (error) {
-      message.error('删除失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '删除失败'));
     }
   };
 

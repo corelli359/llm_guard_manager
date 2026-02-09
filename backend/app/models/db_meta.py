@@ -86,7 +86,7 @@ class RuleGlobalDefaults(Base):
     __tablename__ = "rule_global_defaults"
 
     id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
-    tag_code: Mapped[str] = mapped_column(String(64))
+    tag_code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     extra_condition: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     strategy: Mapped[str] = mapped_column(String(32))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -112,14 +112,25 @@ class PlaygroundHistory(Base):
 
 
 class User(Base):
+    """用户表 - 扩展支持 RBAC 和 SSO"""
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True, nullable=True)  # USAP的UserID
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(128))
-    role: Mapped[str] = mapped_column(String(32), default="AUDITOR") # ADMIN, AUDITOR
+    role: Mapped[str] = mapped_column(String(32), default="ANNOTATOR")  # SYSTEM_ADMIN, SCENARIO_ADMIN, ANNOTATOR, AUDITOR
+    display_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=True
+    )
+    created_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
 
 
 class StagingGlobalKeywords(Base):
@@ -146,6 +157,125 @@ class StagingGlobalKeywords(Base):
     annotated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ============================================
+# RBAC 相关模型 (V2 - 标准 RBAC)
+# ============================================
+
+class Role(Base):
+    """角色表"""
+    __tablename__ = "roles"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    role_code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    role_name: Mapped[str] = mapped_column(String(128))
+    role_type: Mapped[str] = mapped_column(String(16), default="SCENARIO")  # GLOBAL / SCENARIO
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)  # 系统预置角色不可删除
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=True
+    )
+
+
+class Permission(Base):
+    """权限表"""
+    __tablename__ = "permissions"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    permission_code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    permission_name: Mapped[str] = mapped_column(String(128))
+    permission_type: Mapped[str] = mapped_column(String(16), default="MENU")  # MENU / ACTION
+    scope: Mapped[str] = mapped_column(String(16), default="GLOBAL")  # GLOBAL / SCENARIO
+    parent_code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class RolePermission(Base):
+    """角色-权限关联表"""
+    __tablename__ = "role_permissions"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    role_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    permission_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UserScenarioRole(Base):
+    """用户-场景-角色关联表"""
+    __tablename__ = "user_scenario_roles"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    scenario_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)  # NULL=全局角色
+    role_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+
+# ============================================
+# RBAC 相关模型 (V1 - 旧版，保留兼容)
+# ============================================
+
+class UserScenarioAssignment(Base):
+    """用户场景关联表"""
+    __tablename__ = "user_scenario_assignments"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    scenario_id: Mapped[str] = mapped_column(String(64), index=True)
+    role: Mapped[str] = mapped_column(String(32), index=True)  # SCENARIO_ADMIN, ANNOTATOR
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+
+class ScenarioAdminPermission(Base):
+    """场景管理员权限配置表"""
+    __tablename__ = "scenario_admin_permissions"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    scenario_id: Mapped[str] = mapped_column(String(64), index=True)
+
+    # 5 种细粒度权限
+    scenario_basic_info: Mapped[bool] = mapped_column(Boolean, default=True)
+    scenario_keywords: Mapped[bool] = mapped_column(Boolean, default=True)
+    scenario_policies: Mapped[bool] = mapped_column(Boolean, default=False)
+    playground: Mapped[bool] = mapped_column(Boolean, default=True)
+    performance_test: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=True
+    )
+    created_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+
+class AuditLog(Base):
+    """审计日志表"""
+    __tablename__ = "audit_logs"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    username: Mapped[str] = mapped_column(String(64), index=True)
+    action: Mapped[str] = mapped_column(String(64), index=True)  # CREATE, UPDATE, DELETE, VIEW, EXPORT
+    resource_type: Mapped[str] = mapped_column(String(64), index=True)  # USER, SCENARIO, KEYWORD, POLICY, etc.
+    resource_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    scenario_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    details: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class StagingGlobalRules(Base):

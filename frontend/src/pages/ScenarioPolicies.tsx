@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, Button, Card, Row, Col, Input, message } from 'antd';
-import { SearchOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { Tabs, Button, Card, Row, Col, Input, message, Result } from 'antd';
+import { SearchOutlined, ArrowLeftOutlined, LockOutlined } from '@ant-design/icons';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import ScenarioKeywordsTab from '../components/ScenarioKeywordsTab';
 import ScenarioRulesTab from '../components/ScenarioRulesTab';
+import { usePermission } from '../hooks/usePermission';
 
 const { TabPane } = Tabs;
 
@@ -11,6 +12,7 @@ const ScenarioPoliciesPage: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { hasPermission, hasScenarioPermission } = usePermission();
 
   const [currentScenarioId, setCurrentScenarioId] = useState<string>('');
   const [searchScenarioId, setSearchScenarioId] = useState<string>('');
@@ -23,7 +25,7 @@ const ScenarioPoliciesPage: React.FC = () => {
       setCurrentScenarioId(appId);
       setSearchScenarioId(appId);
     }
-    
+
     const modeParam = searchParams.get('mode');
     if (modeParam === 'custom' || modeParam === 'super') {
       setActiveMode(modeParam);
@@ -42,6 +44,23 @@ const ScenarioPoliciesPage: React.FC = () => {
       message.warning('请输入场景 ID');
     }
   };
+
+  // 权限检查：全局权限或场景级权限
+  const canKeywords = currentScenarioId
+    ? hasPermission('scenario_keywords') || hasScenarioPermission(currentScenarioId, 'scenario_keywords')
+    : false;
+  const canPolicies = currentScenarioId
+    ? hasPermission('scenario_policies') || hasScenarioPermission(currentScenarioId, 'scenario_policies')
+    : false;
+  const hasAnyAccess = canKeywords || canPolicies;
+
+  // 默认选中有权限的 tab
+  useEffect(() => {
+    if (currentScenarioId && !searchParams.get('tab')) {
+      if (canKeywords) setActiveTab('keywords');
+      else if (canPolicies) setActiveTab('rules');
+    }
+  }, [currentScenarioId, canKeywords, canPolicies]);
 
   return (
     <div>
@@ -77,7 +96,18 @@ const ScenarioPoliciesPage: React.FC = () => {
         )}
       </div>
 
-      {currentScenarioId && (
+      {currentScenarioId && !hasAnyAccess && (
+        <Result
+          icon={<LockOutlined />}
+          title="权限不足"
+          subTitle="您没有该场景的敏感词管理或策略管理权限"
+          extra={appId && (
+            <Button type="primary" onClick={() => navigate(-1)}>返回</Button>
+          )}
+        />
+      )}
+
+      {currentScenarioId && hasAnyAccess && (
         <Tabs
           activeKey={activeMode}
           onChange={(key) => setActiveMode(key as 'custom' | 'super')}
@@ -85,23 +115,31 @@ const ScenarioPoliciesPage: React.FC = () => {
         >
           <TabPane tab="自定义模式管理" key="custom">
             <Tabs activeKey={activeTab} onChange={setActiveTab} type="line">
-              <TabPane tab="敏感词管理（黑名单/白名单）" key="keywords">
-                <ScenarioKeywordsTab scenarioId={currentScenarioId} mode="custom" />
-              </TabPane>
-              <TabPane tab="规则管理" key="rules">
-                <ScenarioRulesTab scenarioId={currentScenarioId} ruleMode={1} modeName="自定义模式" />
-              </TabPane>
+              {canKeywords && (
+                <TabPane tab="敏感词管理（黑名单/白名单）" key="keywords">
+                  <ScenarioKeywordsTab scenarioId={currentScenarioId} mode="custom" />
+                </TabPane>
+              )}
+              {canPolicies && (
+                <TabPane tab="规则管理" key="rules">
+                  <ScenarioRulesTab scenarioId={currentScenarioId} ruleMode={1} modeName="自定义模式" />
+                </TabPane>
+              )}
             </Tabs>
           </TabPane>
 
           <TabPane tab="超级模式管理" key="super">
             <Tabs activeKey={activeTab} onChange={setActiveTab} type="line">
-              <TabPane tab="敏感词管理（黑名单/白名单）" key="keywords">
-                <ScenarioKeywordsTab scenarioId={currentScenarioId} mode="super" />
-              </TabPane>
-              <TabPane tab="规则管理" key="rules">
-                <ScenarioRulesTab scenarioId={currentScenarioId} ruleMode={0} modeName="超级模式" />
-              </TabPane>
+              {canKeywords && (
+                <TabPane tab="敏感词管理（黑名单/白名单）" key="keywords">
+                  <ScenarioKeywordsTab scenarioId={currentScenarioId} mode="super" />
+                </TabPane>
+              )}
+              {canPolicies && (
+                <TabPane tab="规则管理" key="rules">
+                  <ScenarioRulesTab scenarioId={currentScenarioId} ruleMode={0} modeName="超级模式" />
+                </TabPane>
+              )}
             </Tabs>
           </TabPane>
         </Tabs>

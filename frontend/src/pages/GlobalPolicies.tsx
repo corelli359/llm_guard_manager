@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Select, Switch, Space, message, Popconfirm, Tag, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { RuleGlobalDefault, MetaTag } from '../types';
-import { globalPoliciesApi, metaTagsApi } from '../api';
+import { globalPoliciesApi, metaTagsApi, getErrorMessage } from '../api';
 
 const GlobalPoliciesPage: React.FC = () => {
   const [policies, setPolicies] = useState<RuleGlobalDefault[]>([]);
@@ -23,8 +23,8 @@ const GlobalPoliciesPage: React.FC = () => {
     try {
       const res = await globalPoliciesApi.getAll();
       setPolicies(res.data);
-    } catch (error) {
-      message.error('获取全局默认规则失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取全局默认规则失败'));
     } finally {
       setLoading(false);
     }
@@ -60,8 +60,8 @@ const GlobalPoliciesPage: React.FC = () => {
       await globalPoliciesApi.delete(id);
       message.success('规则已删除');
       fetchPolicies();
-    } catch (error) {
-      message.error('删除失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -79,12 +79,10 @@ const GlobalPoliciesPage: React.FC = () => {
       fetchPolicies();
     } catch (error: any) {
       console.error(error);
-      if (error.response && error.response.data && error.response.data.detail) {
-        message.error(`操作失败: ${error.response.data.detail}`);
-      } else if (error.errorFields) {
+      if (error.errorFields) {
          // Form validation error, do nothing
       } else {
-        message.error('操作失败，请重试');
+        message.error(getErrorMessage(error, '操作失败'));
       }
     }
   };

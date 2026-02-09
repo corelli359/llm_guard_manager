@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Statistic, Row, Col, Select, message, Spin } from 'antd';
 import { UserOutlined, CheckCircleOutlined, CloseCircleOutlined, FileTextOutlined } from '@ant-design/icons';
-import { stagingApi } from '../api';
+import { stagingApi, getErrorMessage } from '../api';
 
 const { Option } = Select;
 
@@ -26,8 +26,8 @@ const AnnotatorStatsPage: React.FC = () => {
     try {
       const res = await stagingApi.getAnnotatorStats(taskType);
       setStats(res.data);
-    } catch (e) {
-      message.error('获取统计数据失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '获取统计数据失败'));
     } finally {
       setLoading(false);
     }

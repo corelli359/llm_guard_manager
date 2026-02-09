@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, Switch, Button, Row, Col, Typography, Tag, Divider, Space, message, Spin, Drawer, List, Tooltip, Modal, Descriptions } from 'antd';
 import { PlayCircleOutlined, BugOutlined, CheckCircleOutlined, StopOutlined, EditOutlined, UserOutlined, HistoryOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
-import { scenariosApi, playgroundApi } from '../api';
+import { scenariosApi, playgroundApi, getErrorMessage } from '../api';
 import { ScenarioApp, PlaygroundResponse, PlaygroundHistory } from '../types';
 import dayjs from 'dayjs';
 
@@ -33,8 +33,8 @@ const InputPlayground: React.FC = () => {
     try {
       const res = await scenariosApi.getAll();
       setScenarios(res.data);
-    } catch (error) {
-      message.error('获取场景列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取场景列表失败'));
     } finally {
       setFetchingScenarios(false);
     }
@@ -48,8 +48,8 @@ const InputPlayground: React.FC = () => {
         size: 50
       });
       setHistoryList(res.data);
-    } catch (error) {
-      message.error('获取历史记录失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取历史记录失败'));
     } finally {
       setHistoryLoading(false);
     }
@@ -97,11 +97,7 @@ const InputPlayground: React.FC = () => {
       message.success('检测完成');
     } catch (error: any) {
       console.error(error);
-      if (error.response && error.response.data && error.response.data.detail) {
-        message.error(`检测失败: ${error.response.data.detail}`);
-      } else {
-        message.error('检测请求失败，请检查后端服务');
-      }
+      message.error(getErrorMessage(error, '检测请求失败，请检查后端服务'));
     } finally {
       setLoading(false);
     }

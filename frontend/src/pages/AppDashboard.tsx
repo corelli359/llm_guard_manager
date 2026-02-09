@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Badge, Button, Row, Col, Spin, Tag, message } from 'antd';
 import { SafetyCertificateOutlined, AlertOutlined, CheckCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import { scenariosApi } from '../api';
+import { scenariosApi, getErrorMessage } from '../api';
 import { ScenarioApp } from '../types';
+import { usePermission } from '../hooks/usePermission';
 
 const AppDashboard: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
+  const { hasPermission, hasScenarioPermission } = usePermission();
   const [appData, setAppData] = useState<ScenarioApp | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,24 +23,31 @@ const AppDashboard: React.FC = () => {
     try {
       const res = await scenariosApi.getByAppId(id);
       setAppData(res.data);
-    } catch (error) {
-      message.error('未找到该应用');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '未找到该应用'));
     } finally {
       setLoading(false);
     }
   };
+
+  const canManagePolicies = appId
+    ? hasPermission('scenario_policies') || hasPermission('scenario_keywords')
+      || hasScenarioPermission(appId, 'scenario_policies') || hasScenarioPermission(appId, 'scenario_keywords')
+    : false;
+
+  const isGlobalAdmin = hasPermission('app_management');
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '50px auto' }} />;
   if (!appData) return <div>应用未找到</div>;
 
   return (
     <div>
-      <Button icon={<ArrowLeftOutlined />} style={{ marginBottom: 16 }} onClick={() => navigate('/apps')}>
-        返回应用列表
+      <Button icon={<ArrowLeftOutlined />} style={{ marginBottom: 16 }} onClick={() => navigate(isGlobalAdmin ? '/apps' : '/my-scenarios')}>
+        {isGlobalAdmin ? '返回应用列表' : '返回我的场景'}
       </Button>
 
-      <Card 
-        title={`应用详情: ${appData.app_name}`} 
+      <Card
+        title={`应用详情: ${appData.app_name}`}
         extra={<Badge status={appData.is_active ? "success" : "default"} text={appData.is_active ? "运行中" : "已停用"} />}
       >
         <Descriptions bordered>
@@ -50,9 +59,12 @@ const AppDashboard: React.FC = () => {
       <h3 style={{ marginTop: 24 }}>功能模块配置</h3>
       <Row gutter={[16, 16]}>
         <Col span={24}>
-          <Card 
-            title="场景策略配置" 
-            extra={<Link to={`/apps/${appData.app_id}/policies`}><Button type="primary">进入配置</Button></Link>}
+          <Card
+            title="场景策略配置"
+            extra={canManagePolicies
+              ? <Link to={`/apps/${appData.app_id}/policies`}><Button type="primary">进入配置</Button></Link>
+              : <Tag color="default">无权限</Tag>
+            }
           >
             <Row gutter={16} style={{ textAlign: 'center' }}>
               <Col span={8}>

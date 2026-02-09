@@ -1,0 +1,104 @@
+{
+  "users": [
+    {
+      "user_id": "U001",
+      "username": "zhangsan",
+      "password": "123456",
+      "user_name": "张三",
+      "email": "zhangsan@company.com",
+      "department": "技术部",
+      "phone": "13800138001",
+      "status": "active"
+    },
+    {
+      "user_id": "U002",
+      "username": "lisi",
+      "password": "123456",
+      "user_name": "李四",
+      "email": "lisi@company.com",
+      "department": "产品部",
+      "phone": "13800138002",
+      "status": "active"
+    },
+    {
+      "user_id": "U003",
+      "username": "wangwu",
+      "password": "123456",
+      "user_name": "王五",
+      "email": "wangwu@company.com",
+      "department": "运营部",
+      "phone": "13800138003",
+      "status": "active"
+    },
+    {
+      "user_id": "U004",
+      "username": "zhaoliu",
+      "password": "123456",
+      "user_name": "赵六",
+      "email": "zhaoliu@company.com",
+      "department": "技术部",
+      "phone": "13800138004",
+      "status": "active"
+    },
+    {
+      "user_id": "U005",
+      "username": "sunqi",
+      "password": "123456",
+      "user_name": "孙七",
+      "email": "sunqi@company.com",
+      "department": "安全部",
+      "phone": "13800138005",
+      "status": "active"
+    },
+    {
+      "user_id": "U006",
+      "username": "zhouba",
+      "password": "123456",
+      "user_name": "周八",
+      "email": "zhouba@company.com",
+      "department": "技术部",
+      "phone": "13800138006",
+      "status": "inactive"
+    },
+    {
+      "user_id": "U007",
+      "username": "wujiu",
+      "password": "123456",
+      "user_name": "吴九",
+      "email": "wujiu@company.com",
+      "department": "产品部",
+      "phone": "13800138007",
+      "status": "active"
+    },
+    {
+      "user_id": "U008",
+      "username": "zhengshi",
+      "password": "123456",
+      "user_name": "郑十",
+      "email": "zhengshi@company.com",
+      "department": "运营部",
+      "phone": "13800138008",
+      "status": "active"
+    },
+    {
+      "user_id": "U009",
+      "username": "admin",
+      "password": "admin123",
+      "user_name": "系统管理员",
+      "email": "admin@company.com",
+      "department": "IT部",
+      "phone": "13800138009",
+      "status": "active"
+    },
+    {
+      "user_id": "U010",
+      "username": "test",
+      "password": "test123",
+      "user_name": "测试用户",
+      "email": "test@company.com",
+      "department": "测试部",
+      "phone": "13800138010",
+      "status": "active"
+    }
+  ]
+}

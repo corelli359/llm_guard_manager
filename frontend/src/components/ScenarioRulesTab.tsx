@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Tag, Radio, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { RuleScenarioPolicy, MetaTag } from '../types';
-import { rulePoliciesApi, metaTagsApi } from '../api';
+import { rulePoliciesApi, metaTagsApi, getErrorMessage } from '../api';
 
 const { Search } = Input;
 
@@ -21,6 +21,7 @@ const ScenarioRulesTab: React.FC<ScenarioRulesTabProps> = ({ scenarioId, ruleMod
   const [editingId, setEditingId] = useState<string | null>(null);
   const [matchType, setMatchType] = useState<'KEYWORD' | 'TAG'>('KEYWORD');
   const [searchText, setSearchText] = useState<string>('');
+  const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -49,8 +50,12 @@ const ScenarioRulesTab: React.FC<ScenarioRulesTabProps> = ({ scenarioId, ruleMod
       // Filter by rule_mode
       const filtered = res.data.filter((p: RuleScenarioPolicy) => p.rule_mode === ruleMode);
       setPolicies(filtered);
-    } catch (error) {
-      message.error('获取策略列表失败');
+      setHasAccess(true);
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        setHasAccess(false);
+      }
+      message.error(getErrorMessage(error, '获取策略列表失败'));
     } finally {
       setLoading(false);
     }
@@ -97,8 +102,8 @@ const ScenarioRulesTab: React.FC<ScenarioRulesTabProps> = ({ scenarioId, ruleMod
       await rulePoliciesApi.delete(id);
       message.success('策略已删除');
       fetchPolicies();
-    } catch (error) {
-      message.error('删除失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -116,12 +121,10 @@ const ScenarioRulesTab: React.FC<ScenarioRulesTabProps> = ({ scenarioId, ruleMod
       fetchPolicies();
     } catch (error: any) {
       console.error(error);
-      if (error.response && error.response.data && error.response.data.detail) {
-        message.error(`操作失败: ${error.response.data.detail}`);
-      } else if (error.errorFields) {
+      if (error.errorFields) {
         // Form validation error, do nothing
       } else {
-        message.error('操作失败，请重试');
+        message.error(getErrorMessage(error, '操作失败'));
       }
     }
   };
@@ -177,14 +180,14 @@ const ScenarioRulesTab: React.FC<ScenarioRulesTabProps> = ({ scenarioId, ruleMod
       title: '操作',
       key: 'action',
       width: 150,
-      render: (_: any, record: RuleScenarioPolicy) => (
+      render: (_: any, record: RuleScenarioPolicy) => hasAccess ? (
         <Space size="middle">
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
           <Popconfirm title="确定要删除此策略吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button icon={<DeleteOutlined />} danger size="small" />
           </Popconfirm>
         </Space>
-      ),
+      ) : <Tag color="default">无权限</Tag>,
     },
   ];
 
@@ -204,9 +207,11 @@ const ScenarioRulesTab: React.FC<ScenarioRulesTabProps> = ({ scenarioId, ruleMod
           />
         </Col>
         <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新增规则
-          </Button>
+          {hasAccess && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+              新增规则
+            </Button>
+          )}
         </Col>
       </Row>
 

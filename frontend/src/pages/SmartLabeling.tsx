@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Tabs, Tag, Space, message, Select, Radio, Tooltip, Alert, Popconfirm, Card, Statistic, Progress, Row, Col } from 'antd';
 import { CheckOutlined, CloseOutlined, CloudUploadOutlined, UserOutlined, DeleteOutlined, ClockCircleOutlined, FileTextOutlined } from '@ant-design/icons';
-import { stagingApi, metaTagsApi } from '../api';
+import { stagingApi, metaTagsApi, getErrorMessage } from '../api';
 import { MetaTag } from '../types';
 import dayjs from 'dayjs';
 
@@ -69,8 +69,8 @@ const SmartLabelingPage: React.FC = () => {
     try {
       const res = await metaTagsApi.getAll();
       setMetaTags(res.data.filter(tag => tag.is_active));
-    } catch (e) {
-      message.error('获取标签列表失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '获取标签列表失败'));
     }
   };
 
@@ -84,8 +84,8 @@ const SmartLabelingPage: React.FC = () => {
           const res = await stagingApi.listRules(statusFilter, showMyTasks && statusFilter === 'CLAIMED');
           setRulesData(res.data);
       }
-    } catch (e) {
-      message.error('获取数据失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '获取数据失败'));
     } finally {
       setLoading(false);
     }
@@ -120,7 +120,7 @@ const SmartLabelingPage: React.FC = () => {
       fetchMyTasksStats();
       fetchTaskOverview();
     } catch (e: any) {
-      message.error(e.response?.data?.detail || '领取任务失败');
+      message.error(getErrorMessage(e, '领取任务失败'));
     } finally {
       setClaiming(false);
     }
@@ -146,8 +146,8 @@ const SmartLabelingPage: React.FC = () => {
       fetchData();
       fetchMyTasksStats();
       fetchTaskOverview();
-    } catch (e) {
-      message.error('操作失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '操作失败'));
     }
   };
 
@@ -156,8 +156,8 @@ const SmartLabelingPage: React.FC = () => {
           await stagingApi.deleteKeyword(id);
           message.success('已删除');
           fetchData();
-      } catch (e) {
-          message.error('删除失败');
+      } catch (e: any) {
+          message.error(getErrorMessage(e, '删除失败'));
       }
   };
 
@@ -180,8 +180,8 @@ const SmartLabelingPage: React.FC = () => {
       fetchData();
       fetchMyTasksStats();
       fetchTaskOverview();
-    } catch (e) {
-      message.error('操作失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '操作失败'));
     }
   };
 
@@ -190,8 +190,8 @@ const SmartLabelingPage: React.FC = () => {
           await stagingApi.deleteRule(id);
           message.success('已删除');
           fetchData();
-      } catch (e) {
-          message.error('删除失败');
+      } catch (e: any) {
+          message.error(getErrorMessage(e, '删除失败'));
       }
   };
 
@@ -210,8 +210,8 @@ const SmartLabelingPage: React.FC = () => {
       setSelectedRowKeys([]);
       fetchData();
       fetchTaskOverview();
-    } catch (e) {
-      message.error('同步失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '同步失败'));
     } finally {
       setSyncing(false);
     }
@@ -239,8 +239,8 @@ const SmartLabelingPage: React.FC = () => {
       setSelectedRowKeys([]);
       fetchData();
       fetchTaskOverview();
-    } catch (e) {
-      message.error('同步失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '同步失败'));
     } finally {
       setSyncing(false);
     }
@@ -302,8 +302,8 @@ const SmartLabelingPage: React.FC = () => {
       fetchData();
       fetchMyTasksStats();
       fetchTaskOverview();
-    } catch (e) {
-      message.error('批量操作失败');
+    } catch (e: any) {
+      message.error(getErrorMessage(e, '批量操作失败'));
     } finally {
       setSyncing(false);
     }
@@ -316,8 +316,8 @@ const SmartLabelingPage: React.FC = () => {
           fetchData();
           fetchMyTasksStats();
           fetchTaskOverview();
-      } catch (e) {
-          message.error('释放失败');
+      } catch (e: any) {
+          message.error(getErrorMessage(e, '释放失败'));
       }
   };
 

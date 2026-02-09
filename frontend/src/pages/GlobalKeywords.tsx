@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { GlobalKeyword, MetaTag } from '../types';
-import { globalKeywordsApi, metaTagsApi } from '../api';
+import { globalKeywordsApi, metaTagsApi, getErrorMessage } from '../api';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -23,8 +23,8 @@ const GlobalKeywordsPage: React.FC = () => {
       // Passing query for search
       const res = await globalKeywordsApi.getAll(0, 1000, query);
       setKeywords(res.data);
-    } catch (error) {
-      message.error('获取敏感词列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取敏感词列表失败'));
     } finally {
       setLoading(false);
     }
@@ -34,8 +34,8 @@ const GlobalKeywordsPage: React.FC = () => {
     try {
       const res = await metaTagsApi.getAll();
       setTags(res.data);
-    } catch (error) {
-      message.error('获取标签列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '获取标签列表失败'));
     }
   };
 
@@ -62,8 +62,8 @@ const GlobalKeywordsPage: React.FC = () => {
       await globalKeywordsApi.delete(id);
       message.success('敏感词已删除');
       fetchKeywords(searchText);
-    } catch (error) {
-      message.error('删除失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '删除失败'));
     }
   };
 
@@ -81,12 +81,10 @@ const GlobalKeywordsPage: React.FC = () => {
       fetchKeywords(searchText);
     } catch (error: any) {
       console.error(error);
-      if (error.response && error.response.data && error.response.data.detail) {
-        message.error(`操作失败: ${error.response.data.detail}`);
-      } else if (error.errorFields) {
+      if (error.errorFields) {
          // Form validation error, do nothing
       } else {
-        message.error('操作失败，请重试');
+        message.error(getErrorMessage(error, '操作失败'));
       }
     }
   };

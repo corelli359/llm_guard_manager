@@ -41,8 +41,8 @@ class RuleScenarioPolicyResponse(RuleScenarioPolicyBase):
 # --- Global Defaults ---
 
 class RuleGlobalDefaultsBase(BaseModel):
-    tag_code: str
-    extra_condition: Optional[str] = None
+    tag_code: str | None = None
+    extra_condition: str | None = None
     strategy: str
     is_active: bool = True
 
@@ -50,10 +50,10 @@ class RuleGlobalDefaultsCreate(RuleGlobalDefaultsBase):
     pass
 
 class RuleGlobalDefaultsUpdate(BaseModel):
-    tag_code: Optional[str] = None
-    extra_condition: Optional[str] = None
-    strategy: Optional[str] = None
-    is_active: Optional[bool] = None
+    tag_code: str | None = None
+    extra_condition: str | None = None
+    strategy: str | None = None
+    is_active: bool | None = None
 
 class RuleGlobalDefaultsResponse(RuleGlobalDefaultsBase):
     id: str

@@ -13,3 +13,4 @@ performance_history/
 *.sh
 abc
 backend/migrations/
+backend/init_rbac.py

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, Form, Input, Select, Switch, Button, Row, Col, Tabs, Statistic, message, Divider, Tag, Space, Drawer, Table, Popconfirm, Descriptions, Spin, Alert } from 'antd';
 import { PlayCircleOutlined, StopOutlined, ThunderboltOutlined, CheckCircleOutlined, ClockCircleOutlined, HistoryOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { scenariosApi, performanceApi } from '../api';
+import { scenariosApi, performanceApi, getErrorMessage } from '../api';
 import { ScenarioApp } from '../types';
 import dayjs from 'dayjs';
 
@@ -42,8 +42,8 @@ const PerformanceTestPage: React.FC = () => {
     try {
       const res = await scenariosApi.getAll();
       setApps(res.data);
-    } catch (error) {
-      message.error('加载应用列表失败');
+    } catch (error: any) {
+      message.error(getErrorMessage(error, '加载应用列表失败'));
     } finally {
       setLoadingApps(false);
     }
@@ -150,8 +150,8 @@ const PerformanceTestPage: React.FC = () => {
         setIsRunning(true);
         startPolling();
 
-    } catch (error) {
-        message.error('启动失败');
+    } catch (error: any) {
+        message.error(getErrorMessage(error, '启动失败'));
     }
   };
 
@@ -159,8 +159,8 @@ const PerformanceTestPage: React.FC = () => {
       try {
           await performanceApi.stop();
           message.warning('正在停止...');
-      } catch (e) {
-          message.error('停止失败');
+      } catch (e: any) {
+          message.error(getErrorMessage(e, '停止失败'));
       }
   };
   
@@ -169,8 +169,8 @@ const PerformanceTestPage: React.FC = () => {
       try {
           const res = await performanceApi.getHistoryList();
           setHistoryList(res.data);
-      } catch (e) {
-          message.error('获取历史记录失败');
+      } catch (e: any) {
+          message.error(getErrorMessage(e, '获取历史记录失败'));
       } finally {
           setHistoryLoading(false);
       }
@@ -187,8 +187,8 @@ const PerformanceTestPage: React.FC = () => {
       try {
           const res = await performanceApi.getHistoryDetail(record.test_id);
           setSelectedHistory(res.data);
-      } catch (e) {
-          message.error('加载详情失败');
+      } catch (e: any) {
+          message.error(getErrorMessage(e, '加载详情失败'));
       } finally {
           setDetailLoading(false);
       }
@@ -199,8 +199,8 @@ const PerformanceTestPage: React.FC = () => {
           await performanceApi.deleteHistory(testId);
           message.success('记录已删除');
           fetchHistory();
-      } catch (e) {
-          message.error('删除失败');
+      } catch (e: any) {
+          message.error(getErrorMessage(e, '删除失败'));
       }
   };
 

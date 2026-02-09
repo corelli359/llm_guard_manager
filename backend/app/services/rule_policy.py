@@ -53,12 +53,18 @@ class RulePolicyService:
     # --- Global Defaults ---
 
     async def create_global_default(self, default_in: RuleGlobalDefaultsCreate) -> RuleGlobalDefaults:
+        # Business logic validation: if tag_code is empty, extra_condition must be provided
+        if not default_in.tag_code and not default_in.extra_condition:
+            raise ValueError("When tag_code is empty, extra_condition must be provided.")
+
         # Check for duplicates
         existing = await self.global_repo.get_duplicate(default_in.tag_code, default_in.extra_condition)
         if existing:
+            tag_display = default_in.tag_code if default_in.tag_code else "(空)"
+            condition_display = default_in.extra_condition if default_in.extra_condition else "(无)"
             raise ValueError(
-                f"Duplicate global default: Rule for Tag '{default_in.tag_code}' "
-                f"with condition '{default_in.extra_condition}' already exists."
+                f"Duplicate global default: Rule for Tag '{tag_display}' "
+                f"with condition '{condition_display}' already exists."
             )
 
         obj_in_data = default_in.model_dump()
@@ -72,6 +78,14 @@ class RulePolicyService:
         default_obj = await self.global_repo.get(default_id)
         if not default_obj:
             raise ValueError("Global Default not found")
+
+        # Business logic validation: if tag_code is being set to empty, extra_condition must be provided
+        updated_tag_code = default_in.tag_code if default_in.tag_code is not None else default_obj.tag_code
+        updated_extra_condition = default_in.extra_condition if default_in.extra_condition is not None else default_obj.extra_condition
+
+        if not updated_tag_code and not updated_extra_condition:
+            raise ValueError("When tag_code is empty, extra_condition must be provided.")
+
         return await self.global_repo.update(default_obj, default_in)
 
     async def delete_global_default(self, default_id: str) -> Optional[RuleGlobalDefaults]:
