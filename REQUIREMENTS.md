@@ -37,10 +37,10 @@
     *   **场景筛选:** 选择特定 `scenario_id` 查看该场景下的词库。
     *   **关键词管理:** 新增/编辑/删除场景关键词。
     *   **名单类型:** 设置是 **黑名单 (Block)** 还是 **白名单 (Allow/White)** (`category` 字段: 0=白, 1=黑)。
-    *   **属性配置:** 
-        *   **关联 Tag Code:** 
-            *   **强制校验:** 无论是黑名单 (Block) 还是白名单 (Allow)，**必须**关联一个 Tag Code。
-        *   风险等级 (Risk Level)。
+    *   **属性配置:**
+        *   **关联 Tag Code:**
+            *   **可选字段:** Tag Code 为可选项（`tag_code: Optional[str] = None`），黑名单和白名单均不强制要求关联 Tag Code。
+        *   风险等级 (Risk Level)，可选。
 
 ### 2.4 规则与策略配置 (Rule & Policy Configuration)
 该模块决定了系统如何根据命中的关键词或标签进行处置（拦截、放行、重写等）。
@@ -67,8 +67,8 @@
 │   │   └─ 字段说明：
     │   │       ├─ keyword: 敏感词内容
     │   │       ├─ category: 0=白名单, 1=黑名单
-    │   │       ├─ tag_code: 关联的标签编码 (必填)
-    │   │       ├─ risk_level: 风险等级(High/Medium/Low)
+    │   │       ├─ tag_code: 关联的标签编码 (可选)
+    │   │       ├─ risk_level: 风险等级(High/Medium/Low)，可选
     │   │       └─ is_active: 启用/禁用状态│   │
 │   └─ 子Tab 1.2: 规则管理
 │       ├─ 数据来源：RuleScenarioPolicy 表（rule_mode = "自定义模式"）
@@ -115,7 +115,7 @@
    - 支持关键词内容的模糊搜索
    - 列表中用不同颜色的Tag标识黑名单/白名单（如：黑名单用红色Tag，白名单用绿色Tag）
    - 支持启用/禁用状态切换
-   - **强制校验:** 新增/编辑黑名单时，**Tag Code 为必填项**，后端通过 API 校验，前端通过表单规则校验。
+   - **强制校验:** 新增/编辑黑名单时，**Tag Code 为可选项**，后端模型和 Schema 均允许 `tag_code` 为 `None`。
 
 3. **规则管理特性:**
    - 自定义模式和超级模式的规则通过 `rule_mode` 字段区分，分开展示
@@ -148,7 +148,7 @@
 *   **场景敏感词校验 (Scenario Keywords):**
     *   **校验规则:** 同一个场景 (`scenario_id`) 下，同一个敏感词内容 (`keyword`) 必须唯一。
     *   **互斥性:** 同一个词在同一场景下不能既是白名单又是黑名单，也不能重复定义为黑/白名单。
-    *   **标签约束:** 所有敏感词必须关联标签 (`tag_code` 非空)。
+    *   **标签约束:** 场景敏感词的标签 (`tag_code`) 为可选字段，允许为空。
 
 *   **场景策略校验 (Scenario Policy):**
     *   **校验规则:** 同一场景下，针对同一模式 (`rule_mode`)、同一匹配类型 (`match_type`) 和同一匹配值 (`match_value`) 的策略必须唯一。
@@ -262,6 +262,9 @@
     *   `POST /api/v1/performance/start`: 启动压测任务 (Background Task)。
     *   `POST /api/v1/performance/stop`: 强制停止当前任务。
     *   `GET /api/v1/performance/status`: 获取实时统计数据。
+    *   `GET /api/v1/performance/history`: 获取历史性能测试列表。
+    *   `GET /api/v1/performance/history/{test_id}`: 获取历史性能测试详情。
+    *   `DELETE /api/v1/performance/history/{test_id}`: 删除性能测试历史记录（仅 SYSTEM_ADMIN）。
 
 ## 2.8 试验场历史记录 (Playground History)
 **目标:** 记录各类试验场（输入、输出、全流程）的每一次交互数据，并提供历史查询功能。鉴于试验场包含多种类型（目前已有输入试验场，未来将扩展输出和全流程），历史记录模块需具备高扩展性以适配不同类型的输入输出结构。
@@ -336,37 +339,117 @@
 ### 3.1 角色与权限 (Roles & Permissions)
 系统引入多角色管理，以支持多人协作审核。
 
-*   **管理员 (Admin):**
+*   **系统管理员 (SYSTEM_ADMIN):**
     *   **权限:** 拥有系统所有权限。
-    *   **账号:** 保持现有硬编码账号（作为超级管理员）。
-    *   **特权:** 创建/管理审核员账号、执行数据“入库同步”、管理全局配置。
-*   **审核员 (Auditor):**
-    *   **权限:** 仅限访问“智能标注”模块。
-    *   **职责:** 查看待审核数据，进行标签/策略修正，标记为“已审核”。不可直接执行入库操作。
+    *   **特权:** 创建/管理用户账号、管理角色和权限、执行数据"入库同步"、管理全局配置、查看审计日志。
+*   **场景管理员 (SCENARIO_ADMIN):**
+    *   **权限:** 管理被分配的场景，包括场景基本信息、场景关键词、场景策略、试验场、性能测试（根据细粒度权限配置）。
+    *   **职责:** 管理特定场景的配置和测试。
+*   **审核员 (AUDITOR):**
+    *   **权限:** 查看审计日志。
+    *   **职责:** 审计系统操作记录。
+*   **标注员 (ANNOTATOR):**
+    *   **权限:** 仅限访问"智能标注"模块。
+    *   **职责:** 认领待审核数据，进行标签/策略修正，标记为"已审核"。不可直接执行入库操作。
     *   **账号来源:** 由管理员创建并分发。
 
-### 3.2 审核员管理功能
-*   **创建审核员:** 管理员输入用户名，系统自动生成随机强密码并弹窗展示（仅展示一次），管理员负责将账号密码分发给人员。
-*   **登录界面:** 区分“管理员登录”和“审核员登录”入口（或统一入口但在后端区分逻辑），支持数据库验证审核员身份。
+### 3.2 用户管理功能
+*   **创建用户:** 管理员可创建用户并分配角色（SYSTEM_ADMIN, SCENARIO_ADMIN, ANNOTATOR, AUDITOR）。
+*   **SSO 自动创建:** 通过 SSO 登录的用户会自动在本地创建用户记录。
+*   **登录方式:** 支持用户名密码登录和 SSO 单点登录两种方式。
+*   **角色分配:** 管理员可为用户分配全局角色或场景级别角色，场景角色需指定 scenario_id。
 
 ### 3.3 数据流转状态机
 中间态数据 (`staging_global_keywords`, `staging_global_rules`) 拥有以下生命周期：
 1.  **PENDING (待审核):** 模型生成后的初始状态。
-2.  **REVIEWED (已审核):** 人工确认或修改后的状态。记录 `annotator` (审核人) 和 `is_modified` (是否修改)。
-3.  **SYNCED (已入库):** 数据已被管理员同步到生产环境表 (`GlobalKeywords` 等)。
-4.  **IGNORED (已忽略):** 判定为无效数据，不予入库。
+2.  **CLAIMED (已认领):** 标注员通过批量认领接口领取任务后的状态。记录 `claimed_by` (认领人)、`claimed_at` (认领时间)、`batch_id` (批次ID)。认领超时（30分钟）后自动释放回 PENDING。
+3.  **REVIEWED (已审核):** 人工确认或修改后的状态。记录 `annotator` (审核人) 和 `is_modified` (是否修改)。
+4.  **SYNCED (已入库):** 数据已被管理员同步到生产环境表 (`GlobalKeywords` 等)。
+5.  **IGNORED (已忽略):** 判定为无效数据，不予入库。
 
 ### 3.4 核心流程
-1.  **标注:** 审核员在列表页对 `PENDING` 数据进行操作（通过/修改/忽略）。
-2.  **审计:** 系统自动记录每条数据的 `annotator` (操作人) 和 `annotated_at` (操作时间)。
-3.  **同步 (Sync):** 管理员选择 `REVIEWED` 状态的数据，执行批量入库。
+1.  **认领:** 标注员通过批量认领接口领取一批 `PENDING` 数据（默认50条），状态变为 `CLAIMED`，30分钟超时自动释放。
+2.  **标注:** 审核员对 `CLAIMED` 数据进行操作（通过/修改/忽略），支持单条和批量审核。
+3.  **审计:** 系统自动记录每条数据的 `annotator` (操作人) 和 `annotated_at` (操作时间)。
+4.  **同步 (Sync):** 管理员选择 `REVIEWED` 状态的数据，执行批量入库。
     *   **冲突策略:** 若正式库已存在相同 Key，**覆盖**旧数据。
     *   **留痕:** 入库成功的数据在 Staging 表中保留，状态更为 `SYNCED`。
 
 ### 3.5 数据库设计 (Schema Draft)
-*   **`users`**: `id`, `username`, `hashed_password`, `role`, `is_active`.
-*   **`staging_global_keywords`**: `id`, `keyword`, `predicted_tag`, `final_tag`, `status`, `annotator`, `is_modified`...
-*   **`staging_global_rules`**: `id`, `tag_code`, `predicted_strategy`, `final_strategy`, `status`, `annotator`...
+*   **`users`**: `id`, `user_id` (USAP UserID, 可选), `username`, `hashed_password`, `role` (SYSTEM_ADMIN/SCENARIO_ADMIN/ANNOTATOR/AUDITOR), `display_name`, `email`, `is_active`, `created_at`, `updated_at`, `created_by`.
+*   **`roles`**: `id`, `role_code` (唯一), `role_name`, `role_type` (GLOBAL/SCENARIO), `description`, `is_system`, `is_active`.
+*   **`permissions`**: `id`, `permission_code` (唯一), `permission_name`, `permission_type` (MENU/ACTION), `scope` (GLOBAL/SCENARIO), `parent_code`, `sort_order`, `description`, `is_active`.
+*   **`role_permissions`**: `id`, `role_id`, `permission_id` - 角色-权限关联表。
+*   **`user_scenario_roles`**: `id`, `user_id`, `scenario_id` (NULL=全局角色), `role_id`, `created_by` - 用户-场景-角色关联表。
+*   **`scenario_admin_permissions`**: `id`, `user_id`, `scenario_id`, `scenario_basic_info`, `scenario_keywords`, `scenario_policies`, `playground`, `performance_test` - 场景管理员细粒度权限。
+*   **`audit_logs`**: `id`, `user_id`, `username`, `action`, `resource_type`, `resource_id`, `scenario_id`, `details` (JSON), `ip_address`, `user_agent`, `created_at`.
+*   **`staging_global_keywords`**: `id`, `keyword`, `predicted_tag`, `predicted_risk`, `final_tag`, `final_risk`, `status` (PENDING/CLAIMED/REVIEWED/SYNCED/IGNORED), `is_modified`, `claimed_by`, `claimed_at`, `batch_id`, `annotator`, `annotated_at`, `created_at`.
+*   **`staging_global_rules`**: `id`, `tag_code`, `predicted_strategy`, `final_strategy`, `extra_condition`, `status` (PENDING/CLAIMED/REVIEWED/SYNCED/IGNORED), `is_modified`, `claimed_by`, `claimed_at`, `batch_id`, `annotator`, `annotated_at`, `created_at`.
+
+### 3.6 SSO 单点登录 (SSO Authentication)
+**功能描述:** 支持通过 USAP (统一安全认证平台) 进行单点登录，用户使用 USAP 颁发的 Ticket 换取本地 JWT Token。
+
+*   **功能点:**
+    *   **Ticket 登录:** 前端将 USAP 颁发的 Ticket 发送到后端，后端验证 Ticket 后创建或更新本地用户记录，返回 JWT Token。
+    *   **用户信息查询:** 从 USAP 获取用户基本信息（姓名、邮箱、部门等），结合本地权限信息返回。
+    *   **批量用户查询:** 支持批量从 USAP 获取用户信息，用于列表页面显示。
+    *   **健康检查:** 检查 USAP 服务是否可用。
+    *   **配置:** 通过 `SSO_ENABLED`、`USAP_BASE_URL`、`USAP_CLIENT_ID`、`USAP_CLIENT_SECRET` 等环境变量配置。
+
+*   **前端页面:** `SSOLogin.tsx` - SSO 登录页面，处理 USAP 回调和 Ticket 交换。
+
+### 3.7 用户管理 (User Management)
+**功能描述:** 系统管理员可管理所有用户的角色、状态和权限分配。
+
+*   **功能点:**
+    *   **用户列表:** 展示所有用户（仅 SYSTEM_ADMIN 可访问）。
+    *   **角色修改:** 修改用户角色（SYSTEM_ADMIN, SCENARIO_ADMIN, ANNOTATOR, AUDITOR），不可修改自己的角色。
+    *   **状态管理:** 启用/禁用用户，不可禁用自己。
+    *   **用户删除:** 删除用户，不可删除自己。
+    *   **角色分配:** 为用户分配场景级别或全局级别的角色（全局角色不需要 scenario_id，场景角色需要）。
+    *   **权限查询:** 用户可查询自己的权限列表。
+
+*   **前端页面:** `UsersPage.tsx` - 用户管理页面。
+
+### 3.8 角色与权限管理 (RBAC - Role-Based Access Control)
+**功能描述:** 标准 RBAC 模型，支持角色定义、权限配置和角色-权限关联。
+
+#### A. 角色管理 (Roles)
+*   **功能点:**
+    *   **角色列表:** 展示所有角色及其权限数量。
+    *   **创建角色:** 输入角色编码（唯一）、名称、类型（GLOBAL/SCENARIO）、描述。
+    *   **更新角色:** 修改角色名称、类型、描述、启用状态。
+    *   **删除角色:** 系统预置角色（`is_system=True`）不可删除。
+    *   **角色权限配置:** 为角色分配权限列表。
+
+*   **前端页面:** `RolesPage.tsx` - 角色管理页面。
+
+#### B. 权限查询 (Permissions)
+*   **功能点:**
+    *   **我的权限:** 获取当前用户的完整权限信息（包括角色和所有场景的权限配置）。
+    *   **权限检查:** 检查当前用户是否有特定场景的特定权限。
+    *   **权限列表:** 获取系统中所有可用权限。
+
+*   **前端组件:** `PermissionGuard.tsx` - 权限守卫组件，用于前端权限控制。
+
+### 3.9 审计日志 (Audit Logs)
+**功能描述:** 记录系统中所有关键操作的审计日志，支持多维度查询和统计。
+
+*   **功能点:**
+    *   **日志查询:** 支持按用户ID、用户名、操作类型（CREATE/UPDATE/DELETE/VIEW/EXPORT）、资源类型（USER/SCENARIO/KEYWORD/POLICY 等）、场景ID、时间范围筛选。
+    *   **日志统计:** 统计符合条件的日志数量。
+    *   **自动记录:** 系统在用户管理、角色分配、性能测试等关键操作时自动写入审计日志，记录操作人、IP 地址、User-Agent 等信息。
+    *   **权限:** 仅 SYSTEM_ADMIN 和 AUDITOR 可查看审计日志。
+
+*   **数据模型 (`AuditLog`):**
+    *   `id`, `user_id`, `username`, `action`, `resource_type`, `resource_id`, `scenario_id`, `details` (JSON), `ip_address`, `user_agent`, `created_at`
+
+*   **前端页面:** `AuditLogs.tsx` - 审计日志查询页面。
+
+### 3.10 我的场景 (My Scenarios)
+**功能描述:** 场景管理员 (SCENARIO_ADMIN) 查看自己被分配管理的场景列表。
+
+*   **前端页面:** `MyScenarios.tsx` - 我的场景页面，展示当前用户有权限管理的场景。
 
 ## 4. 非功能性需求
 *   **架构:** 前后端分离。
@@ -375,16 +458,108 @@
 *   **性能:** 关键词匹配可能涉及高性能需求，管理端主要关注 CRUD 的响应速度。
 *   **扩展性:** `scenario_id` 目前为字符串，未来可能需要一张独立的 `Scenarios` 表来维护场景元数据。
 
-## 4. 接口规划 (API Draft)
-*   `GET /api/tags`: 获取标签树/列表
-*   `POST /api/tags`: 创建标签
-*   `PUT /api/tags/{id}`: 更新标签
-*   `DELETE /api/tags/{id}`: 删除标签
-*   `GET /api/keywords/global`: 搜索全局关键词
-*   `POST /api/keywords/global`: 添加全局关键词
-*   `GET /api/keywords/scenario`: 获取场景关键词
-*   `POST /api/keywords/scenario`: 添加场景关键词
-*   `GET /api/policy/scenario`: 获取场景策略
-*   `POST /api/policy/scenario`: 配置场景规则
-*   `GET /api/policy/defaults`: 获取全局默认规则
-*   `POST /api/policy/defaults`: 配置全局默认规则
+## 5. 接口规划 (API Draft)
+
+**Base URL:** `/api/v1`
+
+### 5.1 认证 (Authentication)
+*   `POST /api/v1/login/access-token`: 用户名密码登录，获取 JWT Token
+
+### 5.2 SSO 单点登录 (SSO)
+*   `POST /api/v1/sso/login`: SSO 单点登录（使用 USAP Ticket 换取 JWT Token）
+*   `GET /api/v1/sso/user-info`: 获取当前 SSO 用户完整信息（从 USAP 获取基本信息 + 本地权限）
+*   `POST /api/v1/sso/users/batch`: 批量获取用户信息（从 USAP 批量查询）
+*   `GET /api/v1/sso/health`: SSO 服务健康检查（检查 USAP 服务可用性）
+
+### 5.3 用户管理 (Users)
+*   `GET /api/v1/users/`: 获取用户列表（仅 SYSTEM_ADMIN）
+*   `PUT /api/v1/users/{user_id}/role`: 修改用户角色（仅 SYSTEM_ADMIN）
+*   `PATCH /api/v1/users/{user_id}/status`: 启用/禁用用户（仅 SYSTEM_ADMIN）
+*   `DELETE /api/v1/users/{user_id}`: 删除用户（仅 SYSTEM_ADMIN）
+*   `GET /api/v1/users/{user_id}/roles`: 获取用户所有角色分配
+*   `POST /api/v1/users/{user_id}/roles`: 分配角色给用户（仅 SYSTEM_ADMIN）
+*   `DELETE /api/v1/users/{user_id}/roles/{assignment_id}`: 移除用户角色分配（仅 SYSTEM_ADMIN）
+*   `GET /api/v1/users/me/permissions`: 获取当前用户权限
+
+### 5.4 角色管理 (Roles)
+*   `GET /api/v1/roles/`: 获取角色列表
+*   `POST /api/v1/roles/`: 创建角色（仅 SYSTEM_ADMIN）
+*   `PUT /api/v1/roles/{role_id}`: 更新角色（仅 SYSTEM_ADMIN）
+*   `DELETE /api/v1/roles/{role_id}`: 删除角色（系统预置角色不可删，仅 SYSTEM_ADMIN）
+*   `GET /api/v1/roles/{role_id}/permissions`: 获取角色权限
+*   `PUT /api/v1/roles/{role_id}/permissions`: 更新角色权限（仅 SYSTEM_ADMIN）
+*   `GET /api/v1/roles/permissions/all`: 获取所有权限列表
+
+### 5.5 权限查询 (Permissions)
+*   `GET /api/v1/permissions/me`: 获取当前用户完整权限信息
+*   `POST /api/v1/permissions/check`: 检查当前用户是否有特定权限（传入 scenario_id 和 permission）
+
+### 5.6 审计日志 (Audit Logs)
+*   `GET /api/v1/audit-logs/`: 查询审计日志（仅 SYSTEM_ADMIN 和 AUDITOR，支持按用户、操作类型、资源类型、场景、时间范围筛选）
+*   `GET /api/v1/audit-logs/count`: 统计审计日志数量（仅 SYSTEM_ADMIN 和 AUDITOR）
+
+### 5.7 元数据标签 (Meta Tags)
+*   `GET /api/v1/tags/`: 获取标签树/列表
+*   `POST /api/v1/tags/`: 创建标签
+*   `PUT /api/v1/tags/{id}`: 更新标签
+*   `DELETE /api/v1/tags/{id}`: 删除标签
+
+### 5.8 全局关键词 (Global Keywords)
+*   `GET /api/v1/keywords/global/`: 搜索全局关键词
+*   `POST /api/v1/keywords/global/`: 添加全局关键词
+*   `PUT /api/v1/keywords/global/{id}`: 更新全局关键词
+*   `DELETE /api/v1/keywords/global/{id}`: 删除全局关键词
+
+### 5.9 场景关键词 (Scenario Keywords)
+*   `GET /api/v1/keywords/scenario/{scenarioId}`: 获取场景关键词
+*   `POST /api/v1/keywords/scenario/{scenarioId}`: 添加场景关键词
+*   `PUT /api/v1/keywords/scenario/{scenarioId}/{id}`: 更新场景关键词
+*   `DELETE /api/v1/keywords/scenario/{scenarioId}/{id}`: 删除场景关键词
+
+### 5.10 规则策略 (Rule Policies)
+*   `GET /api/v1/policies/scenario/{scenarioId}`: 获取场景策略
+*   `POST /api/v1/policies/scenario/{scenarioId}`: 配置场景规则
+*   `PUT /api/v1/policies/scenario/{scenarioId}/{id}`: 更新场景规则
+*   `DELETE /api/v1/policies/scenario/{scenarioId}/{id}`: 删除场景规则
+*   `GET /api/v1/policies/defaults/`: 获取全局默认规则
+*   `POST /api/v1/policies/defaults/`: 配置全局默认规则
+*   `PUT /api/v1/policies/defaults/{id}`: 更新全局默认规则
+*   `DELETE /api/v1/policies/defaults/{id}`: 删除全局默认规则
+
+### 5.11 场景/应用管理 (Apps/Scenarios)
+*   `GET /api/v1/apps/`: 获取场景列表
+*   `POST /api/v1/apps/`: 创建场景
+*   `PUT /api/v1/apps/{id}`: 更新场景
+*   `DELETE /api/v1/apps/{id}`: 删除场景
+
+### 5.12 试验场 (Playground)
+*   `POST /api/v1/playground/input`: 运行输入测试
+*   `GET /api/v1/playground/history`: 获取试验场历史记录
+
+### 5.13 性能测试 (Performance)
+*   `POST /api/v1/performance/dry-run`: 连通性测试（单次请求）
+*   `POST /api/v1/performance/start`: 启动性能测试（后台运行）
+*   `POST /api/v1/performance/stop`: 停止当前性能测试
+*   `GET /api/v1/performance/status`: 获取运行中测试的实时统计
+*   `GET /api/v1/performance/history`: 获取历史性能测试列表
+*   `GET /api/v1/performance/history/{test_id}`: 获取历史性能测试详情
+*   `DELETE /api/v1/performance/history/{test_id}`: 删除性能测试历史记录（仅 SYSTEM_ADMIN）
+
+### 5.14 智能标注/Staging (Staging)
+*   `GET /api/v1/staging/keywords`: 获取智能标注关键词列表
+*   `PATCH /api/v1/staging/keywords/{keyword_id}`: 审核关键词
+*   `POST /api/v1/staging/keywords/batch-review`: 批量审核关键词
+*   `POST /api/v1/staging/keywords/sync`: 同步关键词到正式库（仅 SYSTEM_ADMIN）
+*   `POST /api/v1/staging/keywords/import-mock`: 导入模拟关键词数据
+*   `DELETE /api/v1/staging/keywords/{keyword_id}`: 删除 Staging 关键词
+*   `GET /api/v1/staging/rules`: 获取智能标注规则列表
+*   `PATCH /api/v1/staging/rules/{rule_id}`: 审核规则
+*   `POST /api/v1/staging/rules/batch-review`: 批量审核规则
+*   `POST /api/v1/staging/rules/sync`: 同步规则到正式库（仅 SYSTEM_ADMIN）
+*   `POST /api/v1/staging/rules/import-mock`: 导入模拟规则数据
+*   `DELETE /api/v1/staging/rules/{rule_id}`: 删除 Staging 规则
+*   `POST /api/v1/staging/claim`: 批量认领任务（ANNOTATOR 和 SYSTEM_ADMIN）
+*   `POST /api/v1/staging/release-expired`: 释放超时的认领任务
+*   `GET /api/v1/staging/stats/annotators`: 获取标注员统计信息
+*   `GET /api/v1/staging/my-tasks/stats`: 获取当前用户的任务统计
+*   `GET /api/v1/staging/overview`: 获取任务总览统计

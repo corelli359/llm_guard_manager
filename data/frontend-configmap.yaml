@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: llmsafe
+data:
+  default.conf: |
+    server {
+        listen 8080;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # 支持前端路由，所有请求都返回 index.html
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # 禁用缓存，方便开发调试
+        location ~* \.(html)$ {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
+    }

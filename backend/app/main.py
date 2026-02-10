@@ -22,3 +22,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.get("/")
 async def root():
     return {"message": "Welcome to LLM Guard Manager API"}
+
+@app.get("/api/v1/health")
+async def health():
+    return {"status": "healthy"}

@@ -22,6 +22,7 @@ class ValidateTicketRequest(BaseModel):
 @router.post("/login")
 async def login(request: LoginRequest):
     """用户登录，建立Session"""
+    print(f"[LOGIN] username='{request.username}' password='{request.password}'", flush=True)
     user = user_service.authenticate(request.username, request.password)
 
     if not user:

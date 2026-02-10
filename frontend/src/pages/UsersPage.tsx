@@ -127,6 +127,28 @@ const UsersPage: React.FC = () => {
 
   const columns = [
     { title: '用户ID', dataIndex: 'user_id', key: 'user_id', render: (text: string) => text || '-' },
+    { title: '用户名', dataIndex: 'username', key: 'username', render: (text: string) => text || '-' },
+    { title: '姓名', dataIndex: 'display_name', key: 'display_name', render: (text: string) => text || '-' },
+    {
+      title: '角色',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role: string) => {
+        const colorMap: Record<string, string> = {
+          SYSTEM_ADMIN: 'red',
+          SCENARIO_ADMIN: 'blue',
+          ANNOTATOR: 'green',
+          AUDITOR: 'orange',
+        };
+        const labelMap: Record<string, string> = {
+          SYSTEM_ADMIN: '系统管理员',
+          SCENARIO_ADMIN: '场景管理员',
+          ANNOTATOR: '标注员',
+          AUDITOR: '审计员',
+        };
+        return <Tag color={colorMap[role] || 'default'}>{labelMap[role] || role}</Tag>;
+      },
+    },
     {
       title: '状态',
       dataIndex: 'is_active',

@@ -21,6 +21,11 @@ TARGET_APPS = {
         "name": "LLM安全管理平台",
         "url": "/web-manager/",
         "sso_path": "/web-manager/sso/login"
+    },
+    "llm-guard-manager-v2": {
+        "name": "LLM安全管理平台V2",
+        "url": "/web-manager-java/",
+        "sso_path": "/web-manager-java/sso/login"
     }
 }
 
@@ -54,6 +59,7 @@ async def health():
 @app.post("/api/login", response_model=LoginResponse)
 async def login(req: LoginRequest):
     """用户登录，调用USAP获取Session"""
+    print(f"[PORTAL LOGIN] username='{req.username}' password='{req.password}'", flush=True)
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             resp = await client.post(
@@ -61,6 +67,7 @@ async def login(req: LoginRequest):
                 json={"username": req.username, "password": req.password}
             )
             data = resp.json()
+            print(f"[PORTAL LOGIN] USAP response: status={resp.status_code} body={data}", flush=True)
 
             if resp.status_code == 200 and data.get("success"):
                 return LoginResponse(
@@ -74,6 +81,7 @@ async def login(req: LoginRequest):
                     error=data.get("detail", "登录失败")
                 )
         except Exception as e:
+            print(f"[PORTAL LOGIN] Exception: {e}", flush=True)
             return LoginResponse(success=False, error=str(e))
 
 

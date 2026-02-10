@@ -1,16 +1,58 @@
+# Python
 __pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+
+# Node
 node_modules/
-.deepeval/
-.pytest_cache/
 dist/
+
+# Java build
+backend-java/target/
+
+# IDE
 .vscode/
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Test / Cache
+backend/tests/
+.pytest_cache/
+.deepeval/
+htmlcov/
+.coverage
+
+# Archives
 *.zip
-backend/app/core/config.py
+
+# Performance history data
 performance_history/
-*.yaml
-*.md
-*.sh
-abc
+
+# Backend migrations
 backend/migrations/
 backend/init_rbac.py
+
+# Sensitive config files (contain DB credentials)
+backend/app/core/config.py
+backend-java/src/main/resources/application.yml
+backend/create_admin_user.py
+
+# K8s deployment files (contain DB credentials in env vars)
+k8s/
+backend-java/k8s-deploy.yaml
+k8s_deployment_test.sh
+
+# Deployment docs (contain credentials)
+DEPLOYMENT.md
+
+# Misc
+abc

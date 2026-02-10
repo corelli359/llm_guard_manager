@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-java-config
+  namespace: llmsafe
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location /health {
+            access_log off;
+            return 200 "ok";
+            add_header Content-Type text/plain;
+        }
+
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/javascript application/javascript application/json;
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llmsafe-frontend-java
+  namespace: llmsafe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llmsafe-frontend-java
+  template:
+    metadata:
+      labels:
+        app: llmsafe-frontend-java
+    spec:
+      containers:
+      - name: frontend
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 32Mi
+          limits:
+            cpu: 200m
+            memory: 64Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        volumeMounts:
+        - name: frontend-dist
+          mountPath: /usr/share/nginx/html
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+      volumes:
+      - name: frontend-dist
+        hostPath:
+          path: /host/frontend-java-dist
+          type: Directory
+      - name: nginx-config
+        configMap:
+          name: nginx-java-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-java-svc
+  namespace: llmsafe
+spec:
+  selector:
+    app: llmsafe-frontend-java
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llmsafe-frontend-java-ingress
+  namespace: llmsafe
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /web-manager-java(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: frontend-java-svc
+            port:
+              number: 80

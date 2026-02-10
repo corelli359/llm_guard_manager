@@ -23,6 +23,8 @@ class UserListResponse(BaseModel):
     """用户列表响应"""
     id: str
     user_id: str | None = None  # USAP的UserID
+    username: str | None = None
+    display_name: str | None = None
     role: str
     is_active: bool
     created_at: datetime
