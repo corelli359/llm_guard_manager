@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **每次部署必须严格遵守以下铁令，这是最高优先级的规则！**
 
+### 铁令 0: 挂载部署（第一原则，最高优先级！）
+**Minikube/K8s 部署必须使用 hostPath 挂载方式，绝对禁止构建 Docker 镜像！**
+- ✅ 正确方式：将本地代码/构建产物通过 `hostPath` 挂载到容器中
+- ❌ 错误方式：编写 Dockerfile 多阶段构建、docker build、docker push
+- 前端：构建 dist 后挂载 dist 目录到 nginx 容器
+- 后端：挂载代码目录到容器中，容器内安装依赖并运行
+- 这是本项目的核心部署模式，任何时候都不得违反！
+
 ### 铁令 1: 部署标准
 1. ✅ **按照云上方式部署**：部署的前缀、挂载路径必须明确写入配置
 2. ✅ **部署后必须测试**：确保所有功能正常工作后才算部署完成
