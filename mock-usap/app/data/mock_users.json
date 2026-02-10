@@ -3,7 +3,7 @@
     {
       "user_id": "U001",
       "username": "zhangsan",
-      "password": "123456",
+      "password": "Zs3nKx8q",
       "user_name": "张三",
       "email": "zhangsan@company.com",
       "department": "技术部",
@@ -13,7 +13,7 @@
     {
       "user_id": "U002",
       "username": "lisi",
-      "password": "123456",
+      "password": "Ls4wPm7j",
       "user_name": "李四",
       "email": "lisi@company.com",
       "department": "产品部",
@@ -23,7 +23,7 @@
     {
       "user_id": "U003",
       "username": "wangwu",
-      "password": "123456",
+      "password": "Ww5tRn2v",
       "user_name": "王五",
       "email": "wangwu@company.com",
       "department": "运营部",
@@ -33,7 +33,7 @@
     {
       "user_id": "U004",
       "username": "zhaoliu",
-      "password": "123456",
+      "password": "Zl6yHb3k",
       "user_name": "赵六",
       "email": "zhaoliu@company.com",
       "department": "技术部",
@@ -43,7 +43,7 @@
     {
       "user_id": "U005",
       "username": "sunqi",
-      "password": "123456",
+      "password": "Sq7cNd4f",
       "user_name": "孙七",
       "email": "sunqi@company.com",
       "department": "安全部",
@@ -53,7 +53,7 @@
     {
       "user_id": "U006",
       "username": "zhouba",
-      "password": "123456",
+      "password": "Zb8gTe5m",
       "user_name": "周八",
       "email": "zhouba@company.com",
       "department": "技术部",
@@ -63,7 +63,7 @@
     {
       "user_id": "U007",
       "username": "wujiu",
-      "password": "123456",
+      "password": "Wj9hXf6p",
       "user_name": "吴九",
       "email": "wujiu@company.com",
       "department": "产品部",
@@ -73,7 +73,7 @@
     {
       "user_id": "U008",
       "username": "zhengshi",
-      "password": "123456",
+      "password": "Zs0kYg7r",
       "user_name": "郑十",
       "email": "zhengshi@company.com",
       "department": "运营部",
@@ -83,7 +83,7 @@
     {
       "user_id": "U009",
       "username": "admin",
-      "password": "admin123",
+      "password": "Gn1yo0jY",
       "user_name": "系统管理员",
       "email": "admin@company.com",
       "department": "IT部",
@@ -93,7 +93,7 @@
     {
       "user_id": "U010",
       "username": "test",
-      "password": "test123",
+      "password": "Ts2bMc8w",
       "user_name": "测试用户",
       "email": "test@company.com",
       "department": "测试部",

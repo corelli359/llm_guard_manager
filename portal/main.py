@@ -256,7 +256,7 @@ def get_login_page():
             <button type="submit" class="btn" id="submitBtn">登 录</button>
         </form>
         <div class="footer">
-            <p>Mock USAP v1.0 | 测试账号: admin / admin123</p>
+            <p>Mock USAP v1.0 | 测试账号: admin / Gn1yo0jY</p>
         </div>
     </div>
     <script>
