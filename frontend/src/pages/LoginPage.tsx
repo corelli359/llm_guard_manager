@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message, Tabs } from 'antd';
 import { UserOutlined, LockOutlined, SafetyCertificateOutlined, TeamOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 const LoginPage: React.FC = () => {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loginType, setLoginType] = useState('admin');
 
@@ -31,7 +29,7 @@ const LoginPage: React.FC = () => {
       }
 
       message.success('登录成功！');
-      navigate('/'); 
+      window.location.href = import.meta.env.BASE_URL || '/';
     } catch (error: any) {
       message.error(error.response?.data?.detail || '登录失败，请检查用户名和密码。');
     } finally {

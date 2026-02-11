@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Tag, Radio, Row, Col } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Tag, Radio, Row, Col, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { ScenarioKeyword, MetaTag } from '../types';
@@ -179,6 +179,27 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
       width: 100,
       render: (active: boolean) => <Switch size="small" checked={active} disabled />
     },
+    ...(categoryFilter !== 0 ? [{
+      title: '豁免词',
+      dataIndex: 'exemptions',
+      key: 'exemptions',
+      width: 200,
+      render: (exemptions: string[] | null, record: ScenarioKeyword) => {
+        if (record.category === 0 || !exemptions || exemptions.length === 0) return '-';
+        const visible = exemptions.slice(0, 2);
+        const rest = exemptions.slice(2);
+        return (
+          <Space size={4} wrap>
+            {visible.map(e => <Tag key={e} color="orange">{e}</Tag>)}
+            {rest.length > 0 && (
+              <Tooltip title={rest.join('、')}>
+                <Tag color="orange">+{rest.length}</Tag>
+              </Tooltip>
+            )}
+          </Space>
+        );
+      }
+    }] : []),
     {
       title: '操作',
       key: 'action',
@@ -275,6 +296,19 @@ const ScenarioKeywordsTab: React.FC<ScenarioKeywordsTabProps> = ({ scenarioId, m
               <Select.Option value="Medium">中 (Medium)</Select.Option>
               <Select.Option value="Low">低 (Low)</Select.Option>
             </Select>
+          </Form.Item>
+          <Form.Item noStyle dependencies={['category']}>
+            {() => form.getFieldValue('category') === 1 ? (
+              <Form.Item name="exemptions" label="豁免词">
+                <Select
+                  mode="tags"
+                  placeholder="输入豁免词后按 Enter 添加"
+                  tokenSeparators={['\n']}
+                  open={false}
+                  suffixIcon={null}
+                />
+              </Form.Item>
+            ) : null}
           </Form.Item>
           <Form.Item name="is_active" label="是否启用" valuePropName="checked">
             <Switch />

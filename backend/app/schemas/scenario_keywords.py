@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 
 class ScenarioKeywordsBase(BaseModel):
@@ -9,6 +9,7 @@ class ScenarioKeywordsBase(BaseModel):
     risk_level: Optional[str] = None
     is_active: bool = True
     category: int = 1 # Default Black
+    exemptions: Optional[List[str]] = None
 
 class ScenarioKeywordsCreate(ScenarioKeywordsBase):
     pass
@@ -21,6 +22,7 @@ class ScenarioKeywordsUpdate(BaseModel):
     risk_level: Optional[str] = None
     is_active: Optional[bool] = None
     category: Optional[int] = None
+    exemptions: Optional[List[str]] = None
 
 class ScenarioKeywordsResponse(ScenarioKeywordsBase):
     id: str

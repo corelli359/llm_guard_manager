@@ -66,6 +66,7 @@ class ScenarioKeywords(Base):
     category: Mapped[int] = mapped_column(
         Integer, default=CATEGORY_BLACK, comment="0:白, 1:黑"
     )
+    exemptions: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True, comment="豁免词列表")
 
 
 class RuleScenarioPolicy(Base):

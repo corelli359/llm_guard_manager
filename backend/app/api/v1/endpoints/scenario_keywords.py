@@ -71,7 +71,7 @@ async def update_scenario_keyword(
     from app.repositories.scenario_keywords import ScenarioKeywordsRepository
     from app.models.db_meta import ScenarioKeywords
     repo = ScenarioKeywordsRepository(ScenarioKeywords, db)
-    existing = await repo.get_by_id(keyword_id)
+    existing = await repo.get(keyword_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Keyword not found")
 
@@ -112,7 +112,7 @@ async def delete_scenario_keyword(
     from app.repositories.scenario_keywords import ScenarioKeywordsRepository
     from app.models.db_meta import ScenarioKeywords
     repo = ScenarioKeywordsRepository(ScenarioKeywords, db)
-    existing = await repo.get_by_id(keyword_id)
+    existing = await repo.get(keyword_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Keyword not found")
 

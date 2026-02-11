@@ -24,6 +24,7 @@ export interface ScenarioKeyword {
   risk_level?: string;
   is_active: boolean;
   category: number; // 0: White, 1: Black
+  exemptions?: string[];
 }
 
 export interface RuleScenarioPolicy {
