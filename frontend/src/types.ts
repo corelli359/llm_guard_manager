@@ -234,3 +234,85 @@ export interface UserPermissionsV2 {
   global_permissions: string[];
   scenario_permissions: Record<string, string[]>;
 }
+
+// ============ 自动化测评类型 ============
+
+export interface EvalTestCase {
+  id: string;
+  content: string;
+  tag_codes?: string[];
+  risk_point?: string;
+  expected_result: 'COMPLIANT' | 'VIOLATION';
+  is_active: boolean;
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EvalTask {
+  id: string;
+  task_name: string;
+  app_id: string;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  total_cases: number;
+  completed_cases: number;
+  failed_cases: number;
+  concurrency: number;
+  filter_tag_codes?: string[];
+  filter_expected_result?: string;
+  metrics?: Record<string, any>;
+  started_at?: string;
+  completed_at?: string;
+  created_by?: string;
+  created_at?: string;
+}
+
+export interface EvalTaskResult {
+  id: string;
+  task_id: string;
+  test_case_id: string;
+  content: string;
+  tag_codes?: string[];
+  expected_result: string;
+  guardrail_score?: number;
+  guardrail_result?: string;
+  guardrail_raw?: any;
+  guardrail_latency?: number;
+  llm_judgment?: string;
+  llm_reason?: string;
+  llm_confidence?: number;
+  is_consistent?: boolean;
+  is_correct?: boolean;
+  status: string;
+  error_message?: string;
+  created_at?: string;
+}
+
+export interface EvalMetrics {
+  total: number;
+  block_count: number;
+  block_rate: number;
+  miss_rate: number;
+  false_positive_rate: number;
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+  tp: number;
+  fn: number;
+  fp: number;
+  tn: number;
+  avg_latency: number;
+  by_tag: Array<{
+    tag_code: string;
+    total: number;
+    block_count: number;
+    block_rate: number;
+    miss_rate: number;
+    false_positive_rate: number;
+    accuracy: number;
+    precision: number;
+    recall: number;
+    f1_score: number;
+  }>;
+}

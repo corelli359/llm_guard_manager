@@ -13,7 +13,10 @@ from app.models.db_meta import (
     PlaygroundHistory,
     User,
     StagingGlobalKeywords,
-    StagingGlobalRules
+    StagingGlobalRules,
+    EvalTestCase,
+    EvalTask,
+    EvalTaskResult
 )
 
 async def init_database():

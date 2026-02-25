@@ -73,7 +73,7 @@ const LoginPage: React.FC = () => {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5' }}>
       <Card style={{ width: 400, textAlign: 'center' }}>
-        <h2 style={{ marginBottom: 24 }}>LLM Guard 管理平台</h2>
+        <h2 style={{ marginBottom: 24 }}>大模型安全围栏</h2>
         <Tabs 
             activeKey={loginType} 
             onChange={setLoginType}

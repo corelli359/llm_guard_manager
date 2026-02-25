@@ -285,10 +285,10 @@ class StagingGlobalRules(Base):
     id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
     tag_code: Mapped[str] = mapped_column(String(64))
     predicted_strategy: Mapped[str] = mapped_column(String(32))
-    
+
     final_strategy: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     extra_condition: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    
+
     status: Mapped[str] = mapped_column(String(32), default="PENDING", index=True) # PENDING, CLAIMED, REVIEWED, SYNCED, IGNORED
     is_modified: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -301,4 +301,70 @@ class StagingGlobalRules(Base):
     annotator: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     annotated_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ============================================
+# 自动化测评相关模型
+# ============================================
+
+class EvalTestCase(Base):
+    """测评题库"""
+    __tablename__ = "eval_test_cases"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    content: Mapped[str] = mapped_column(Text)
+    tag_codes: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    risk_point: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    expected_result: Mapped[str] = mapped_column(String(16))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[Optional[DateTime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    )
+
+
+class EvalTask(Base):
+    """测评任务"""
+    __tablename__ = "eval_tasks"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    task_name: Mapped[str] = mapped_column(String(128))
+    app_id: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="PENDING", index=True)
+    total_cases: Mapped[int] = mapped_column(Integer, default=0)
+    completed_cases: Mapped[int] = mapped_column(Integer, default=0)
+    failed_cases: Mapped[int] = mapped_column(Integer, default=0)
+    concurrency: Mapped[int] = mapped_column(Integer, default=5)
+    filter_tag_codes: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    filter_expected_result: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    metrics: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    started_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EvalTaskResult(Base):
+    """测评任务结果"""
+    __tablename__ = "eval_task_results"
+
+    id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
+    task_id: Mapped[str] = mapped_column(CHAR(36), index=True)
+    test_case_id: Mapped[str] = mapped_column(CHAR(36))
+    content: Mapped[str] = mapped_column(Text)
+    tag_codes: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    expected_result: Mapped[str] = mapped_column(String(16))
+    guardrail_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    guardrail_result: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    guardrail_raw: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    guardrail_latency: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    llm_judgment: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    llm_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    llm_confidence: Mapped[Optional[float]] = mapped_column(nullable=True)
+    is_consistent: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    is_correct: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="PENDING", index=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())

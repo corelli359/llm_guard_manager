@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, Outlet, useNavigate } from 'react-router-dom';
-import { Layout, Menu, theme } from 'antd';
+import { Layout, Menu, theme, Button, Space } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   ExperimentOutlined,
@@ -15,7 +15,8 @@ import {
   AuditOutlined,
   BarChartOutlined,
   FileTextOutlined,
-  TeamOutlined
+  TeamOutlined,
+  CheckSquareOutlined,
 } from '@ant-design/icons';
 import MetaTagsPage from './pages/MetaTags';
 import GlobalKeywordsPage from './pages/GlobalKeywords';
@@ -33,15 +34,20 @@ import LoginPage from './pages/LoginPage';
 import SSOLogin from './pages/SSOLogin';
 import AuditLogsPage from './pages/AuditLogs';
 import MyScenariosPage from './pages/MyScenarios';
+import AppProcessGuide from './pages/AppProcessGuide';
 import RolesPage from './pages/RolesPage';
+import EvalTestCasesPage from './pages/EvalTestCases';
+import EvalTasksPage from './pages/EvalTasks';
+import EvalTaskResultsPage from './pages/EvalTaskResults';
+import EvalMetricsPage from './pages/EvalMetrics';
 import { scenariosApi } from './api';
 import { PermissionProvider } from './contexts/PermissionContext';
 import { usePermission } from './hooks/usePermission';
 
 // Placeholder components
-const Dashboard = () => <div><h2>欢迎使用 LLM Guard 管理平台</h2><p>请从左侧菜单选择应用进行管理，或前往“应用管理”创建新应用。</p></div>;
+const Dashboard = () => <div><h2>欢迎使用大模型安全围栏</h2><p>请从左侧菜单选择应用进行管理，或前往“应用管理”创建新应用。</p></div>;
 
-const { Header, Content, Footer, Sider } = Layout;
+const { Header, Content, Sider } = Layout;
 
 // Protected Route Component
 const AuthLayout: React.FC = () => {
@@ -60,6 +66,7 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userRole, userPermissions, hasRole, hasPermission } = usePermission();
+  const [collapsed, setCollapsed] = useState(false);
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(localStorage.getItem('current_app_id'));
 
@@ -185,6 +192,21 @@ const AppLayout: React.FC = () => {
       items.push({ type: 'group', label: '测试工具', children: toolChildren });
     }
 
+    // 自动化测评
+    const evalChildren: any[] = [
+      {
+        key: '/eval/test-cases',
+        icon: <FileTextOutlined />,
+        label: <Link to="/eval/test-cases">测评题库</Link>,
+      },
+      {
+        key: '/eval/tasks',
+        icon: <CheckSquareOutlined />,
+        label: <Link to="/eval/tasks">测评任务</Link>,
+      },
+    ];
+    items.push({ type: 'group', label: '自动化测评', children: evalChildren });
+
     if (hasRole(['SCENARIO_ADMIN', 'ANNOTATOR'])) {
       const myScenarios = userPermissions?.scenario_permissions
         ? Object.keys(userPermissions.scenario_permissions)
@@ -220,13 +242,6 @@ const AppLayout: React.FC = () => {
     }
 
     items.push({ type: 'divider' });
-    items.push({
-      key: '/logout',
-      icon: <LoginOutlined />,
-      label: '退出登录',
-      onClick: handleLogout,
-      danger: true,
-    });
 
     return items;
   }, [userRole, userPermissions, selectedAppId, hasRole, hasPermission]);
@@ -234,11 +249,33 @@ const AppLayout: React.FC = () => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
-        breakpoint="lg"
-        collapsedWidth="0"
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        width={220}
+        style={{
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}
       >
-        <div style={{ padding: '16px', color: 'white', fontWeight: 'bold', fontSize: '18px', textAlign: 'center' }}>
-            LLM Guard 管理平台
+        <div style={{
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          paddingLeft: collapsed ? 0 : 24,
+          gap: 10,
+        }}>
+          <SafetyCertificateOutlined style={{ color: '#1890ff', fontSize: collapsed ? 24 : 22 }} />
+          {!collapsed && (
+            <span style={{ color: 'white', fontWeight: 700, fontSize: 18, whiteSpace: 'nowrap' }}>
+              安全围栏
+            </span>
+          )}
         </div>
 
         <Menu
@@ -248,9 +285,32 @@ const AppLayout: React.FC = () => {
           items={menuItems}
         />
       </Sider>
-      <Layout>
-        <Header style={{ padding: 0, background: colorBgContainer }} />
-        <Content style={{ margin: '24px 16px 0' }}>
+      <Layout style={{ marginLeft: collapsed ? 80 : 220, transition: 'margin-left 0.2s' }}>
+        <Header style={{
+          padding: '0 24px',
+          background: colorBgContainer,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #f0f0f0',
+        }}>
+          <span style={{ fontSize: 18, fontWeight: 600 }}>大模型安全围栏</span>
+          <Space>
+            <span style={{ color: '#666' }}>
+              <UserOutlined style={{ marginRight: 4 }} />
+              {userRole || '用户'}
+            </span>
+            <Button
+              type="text"
+              icon={<LoginOutlined />}
+              onClick={handleLogout}
+              danger
+            >
+              退出
+            </Button>
+          </Space>
+        </Header>
+        <Content style={{ margin: '16px' }}>
           <div
             style={{
               padding: 24,
@@ -280,12 +340,14 @@ const AppLayout: React.FC = () => {
               <Route path="/annotator-stats" element={<AnnotatorStatsPage />} />
               <Route path="/audit-logs" element={<AuditLogsPage />} />
               <Route path="/my-scenarios" element={<MyScenariosPage />} />
+              <Route path="/app-process" element={<AppProcessGuide />} />
+              <Route path="/eval/test-cases" element={<EvalTestCasesPage />} />
+              <Route path="/eval/tasks" element={<EvalTasksPage />} />
+              <Route path="/eval/tasks/:taskId/results" element={<EvalTaskResultsPage />} />
+              <Route path="/eval/tasks/:taskId/metrics" element={<EvalMetricsPage />} />
             </Routes>
           </div>
         </Content>
-        <Footer style={{ textAlign: 'center' }}>
-          LLM Guard Manager ©{new Date().getFullYear()} Created by Corelli
-        </Footer>
       </Layout>
     </Layout>
   );

@@ -30,10 +30,11 @@ async def playground_input(
         audit_service = AuditService(db)
         await audit_service.log_create(
             user_id=current_user.id,
+            resource_id='',
             username=current_user.username,
             resource_type="PLAYGROUND_TEST",
             scenario_id=payload.app_id,
-            details={"playground_type": payload.playground_type, "score": result.get("score")},
+            details={"playground_type": None, "score": result.get("score")},
             request=request
         )
 

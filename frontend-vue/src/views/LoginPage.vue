@@ -54,7 +54,7 @@ async function handleLogin() {
 <template>
   <div class="login-container">
     <el-card class="login-card">
-      <h2 style="text-align: center; margin-bottom: 24px">LLM Guard 管理平台</h2>
+      <h2 style="text-align: center; margin-bottom: 24px">大模型安全围栏管理平台</h2>
       <el-tabs v-model="loginType" stretch>
         <el-tab-pane label="管理员登录" name="admin" />
         <el-tab-pane label="审核员登录" name="auditor" />

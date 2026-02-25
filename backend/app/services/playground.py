@@ -8,6 +8,7 @@ from app.repositories.playground_history import PlaygroundHistoryRepository
 from app.schemas.playground import PlaygroundInputRequest
 
 GUARDRAIL_SERVICE_URL = "http://127.0.0.1:8000/api/input/instance/rule/run"
+#GUARDRAIL_SERVICE_URL = "http://llmsafe-guardrail-svc.llmsafe.svc:8000/api/input/instance/rule/run"
 
 class PlaygroundService:
     def __init__(self, db: AsyncSession):

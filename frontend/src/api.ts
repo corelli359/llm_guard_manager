@@ -283,3 +283,35 @@ export const ssoApi = {
 };
 
 export default api;
+
+// ============ 自动化测评 API ============
+export const evaluationApi = {
+  // 题库
+  listTestCases: (params: { skip?: number; limit?: number; keyword?: string; tag_code?: string; expected_result?: string }) =>
+    api.get('/evaluation/test-cases', { params }),
+  createTestCase: (data: any) => api.post('/evaluation/test-cases', data),
+  updateTestCase: (id: string, data: any) => api.put(`/evaluation/test-cases/${id}`, data),
+  deleteTestCase: (id: string) => api.delete(`/evaluation/test-cases/${id}`),
+  importTestCases: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/evaluation/test-cases/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  countTestCases: (params: { tag_codes?: string; expected_result?: string }) =>
+    api.get('/evaluation/test-cases/count', { params }),
+
+  // 任务
+  createTask: (data: any) => api.post('/evaluation/tasks', data),
+  listTasks: (params: { skip?: number; limit?: number; status?: string; app_id?: string }) =>
+    api.get('/evaluation/tasks', { params }),
+  getTask: (id: string) => api.get(`/evaluation/tasks/${id}`),
+  getTaskResults: (id: string, params: { skip?: number; limit?: number; guardrail_result?: string; is_correct?: boolean }) =>
+    api.get(`/evaluation/tasks/${id}/results`, { params }),
+  cancelTask: (id: string) => api.post(`/evaluation/tasks/${id}/cancel`),
+  deleteTask: (id: string) => api.delete(`/evaluation/tasks/${id}`),
+
+  // 指标
+  getMetrics: (id: string) => api.get(`/evaluation/tasks/${id}/metrics`),
+};

@@ -47,8 +47,8 @@ function logout() {
   <el-container class="layout-container">
     <el-aside :width="isCollapse ? '64px' : '220px'" class="aside">
       <div class="logo">
-        <span v-if="!isCollapse">LLM Guard</span>
-        <span v-else>LG</span>
+        <span v-if="!isCollapse">安全围栏</span>
+        <span v-else>围栏</span>
       </div>
       <el-menu router :default-active="activeMenu" :collapse="isCollapse"
         background-color="#001529" text-color="rgba(255,255,255,0.65)" active-text-color="#fff">

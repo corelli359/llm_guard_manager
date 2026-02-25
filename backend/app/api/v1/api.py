@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     meta_tags, global_keywords, scenario_keywords, rule_policy, scenarios,
     auth, playground, performance, users, staging, permissions, audit_logs, sso,
-    roles
+    roles, evaluation
 )
 
 api_router = APIRouter()
@@ -20,3 +20,4 @@ api_router.include_router(rule_policy.router, prefix="/policies", tags=["rule-po
 api_router.include_router(scenarios.router, prefix="/apps", tags=["apps"])
 api_router.include_router(playground.router, prefix="/playground", tags=["playground"])
 api_router.include_router(performance.router, prefix="/performance", tags=["performance"])
+api_router.include_router(evaluation.router, prefix="/evaluation", tags=["evaluation"])

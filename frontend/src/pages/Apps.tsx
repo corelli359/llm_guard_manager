@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Switch, Space, message, Popconfirm, Card, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, AppstoreOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { ScenarioApp } from '../types';
 import { scenariosApi, getErrorMessage } from '../api';
@@ -110,9 +110,14 @@ const AppsPage: React.FC = () => {
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>应用管理 (App Management)</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          注册新应用
-        </Button>
+        <Space>
+          <Button icon={<QuestionCircleOutlined />} onClick={() => navigate('/app-process')}>
+            申请流程说明
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            注册新应用
+          </Button>
+        </Space>
       </div>
 
       <Table 
