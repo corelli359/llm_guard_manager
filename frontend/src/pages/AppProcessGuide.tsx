@@ -73,7 +73,7 @@ const AppProcessGuide: React.FC = () => {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>应用接入与权限申请流程</h2>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/apps')}>
-          返回应用管理
+          返回场景管理
         </Button>
       </div>
 
@@ -120,7 +120,7 @@ const AppProcessGuide: React.FC = () => {
 
       <Card style={{ marginTop: 32 }} title="说明">
         <ul style={{ lineHeight: 2, color: '#555' }}>
-          <li>新应用接入需由<b>管理员</b>在"应用管理"页面完成注册</li>
+          <li>新应用接入需由<b>管理员</b>在"场景管理"页面完成注册</li>
           <li>注册后，管理员可在"用户管理"中为<b>业务方场景管理员</b>分配对应应用的权限</li>
           <li>业务方场景管理员登录后，可在"我的场景"中管理被授权应用的敏感词和策略</li>
           <li>配置完成后，建议在"输入试验场"中验证策略效果，确认无误后通知业务方对接</li>

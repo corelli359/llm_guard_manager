@@ -35,6 +35,7 @@ import SSOLogin from './pages/SSOLogin';
 import AuditLogsPage from './pages/AuditLogs';
 import MyScenariosPage from './pages/MyScenarios';
 import AppProcessGuide from './pages/AppProcessGuide';
+import GuardrailFlowGuide from './pages/GuardrailFlowGuide';
 import RolesPage from './pages/RolesPage';
 import EvalTestCasesPage from './pages/EvalTestCases';
 import EvalTasksPage from './pages/EvalTasks';
@@ -45,7 +46,7 @@ import { PermissionProvider } from './contexts/PermissionContext';
 import { usePermission } from './hooks/usePermission';
 
 // Placeholder components
-const Dashboard = () => <div><h2>欢迎使用大模型安全围栏</h2><p>请从左侧菜单选择应用进行管理，或前往“应用管理”创建新应用。</p></div>;
+const Dashboard = () => <div><h2>欢迎使用大模型安全围栏</h2><p>请从左侧菜单选择应用进行管理，或前往”场景管理”创建新应用。</p></div>;
 
 const { Header, Content, Sider } = Layout;
 
@@ -145,7 +146,7 @@ const AppLayout: React.FC = () => {
       globalChildren.push({
         key: '/apps',
         icon: <AppstoreOutlined />,
-        label: <Link to="/apps">应用管理</Link>,
+        label: <Link to="/apps">场景管理</Link>,
       });
     }
     if (hasPermission('tag_management')) {
@@ -341,6 +342,7 @@ const AppLayout: React.FC = () => {
               <Route path="/audit-logs" element={<AuditLogsPage />} />
               <Route path="/my-scenarios" element={<MyScenariosPage />} />
               <Route path="/app-process" element={<AppProcessGuide />} />
+              <Route path="/guardrail-flow" element={<GuardrailFlowGuide />} />
               <Route path="/eval/test-cases" element={<EvalTestCasesPage />} />
               <Route path="/eval/tasks" element={<EvalTasksPage />} />
               <Route path="/eval/tasks/:taskId/results" element={<EvalTaskResultsPage />} />

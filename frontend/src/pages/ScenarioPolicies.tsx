@@ -67,7 +67,7 @@ const ScenarioPoliciesPage: React.FC = () => {
       <div style={{ marginBottom: 16 }}>
         {appId && (
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/apps/${appId}`)} style={{ marginBottom: 16 }}>
-            返回应用概览
+            返回场景概览
           </Button>
         )}
         <h2>场景策略管理 {appId ? `- ${appId}` : ''}</h2>

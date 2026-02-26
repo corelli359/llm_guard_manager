@@ -24,7 +24,7 @@ const AppDashboard: React.FC = () => {
       const res = await scenariosApi.getByAppId(id);
       setAppData(res.data);
     } catch (error: any) {
-      message.error(getErrorMessage(error, '未找到该应用'));
+      message.error(getErrorMessage(error, '未找到该场景'));
     } finally {
       setLoading(false);
     }
@@ -38,20 +38,20 @@ const AppDashboard: React.FC = () => {
   const isGlobalAdmin = hasPermission('app_management');
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '50px auto' }} />;
-  if (!appData) return <div>应用未找到</div>;
+  if (!appData) return <div>场景未找到</div>;
 
   return (
     <div>
       <Button icon={<ArrowLeftOutlined />} style={{ marginBottom: 16 }} onClick={() => navigate(isGlobalAdmin ? '/apps' : '/my-scenarios')}>
-        {isGlobalAdmin ? '返回应用列表' : '返回我的场景'}
+        {isGlobalAdmin ? '返回场景列表' : '返回我的场景'}
       </Button>
 
       <Card
-        title={`应用详情: ${appData.app_name}`}
+        title={`场景详情: ${appData.app_name}`}
         extra={<Badge status={appData.is_active ? "success" : "default"} text={appData.is_active ? "运行中" : "已停用"} />}
       >
         <Descriptions bordered>
-          <Descriptions.Item label="应用 ID (App ID)">{appData.app_id}</Descriptions.Item>
+          <Descriptions.Item label="场景 ID (App ID)">{appData.app_id}</Descriptions.Item>
           <Descriptions.Item label="描述" span={2}>{appData.description || '-'}</Descriptions.Item>
         </Descriptions>
       </Card>

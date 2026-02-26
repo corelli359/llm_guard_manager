@@ -5,48 +5,59 @@ from app.core.db import get_db
 from app.api.v1.deps import get_current_user, get_current_user_full
 from app.api.v1.permission_helpers import check_scenario_access_or_403
 from app.schemas.playground import PlaygroundInputRequest, PlaygroundHistorySchema
-from app.services.playground import PlaygroundService
+from app.services.playground import PlaygroundService, DEMO_MOCK_MODE
 from app.services.audit import AuditService
 from app.models.db_meta import User
 
 router = APIRouter()
 
-@router.post("/input", response_model=Any)
-async def playground_input(
-    payload: PlaygroundInputRequest,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_full)
-) -> Any:
-    """运行输入测试"""
-    # 权限检查：需要有 playground 权限
-    await check_scenario_access_or_403(current_user, payload.app_id, db, permission="playground")
+# ===== 演示 Mock 路由，无数据库依赖 =====
+if DEMO_MOCK_MODE:
+    from app.services.playground import _build_mock_response
+    import asyncio, random
 
-    service = PlaygroundService(db)
-    try:
-        result = await service.run_input_check(payload)
+    @router.post("/input", response_model=Any)
+    async def playground_input_mock(payload: PlaygroundInputRequest) -> Any:
+        """Mock 模式：直接返回预设数据，不连数据库"""
+        await asyncio.sleep(random.randint(80, 200) / 1000)
+        return _build_mock_response(payload.input_prompt)
+else:
+    @router.post("/input", response_model=Any)
+    async def playground_input(
+        payload: PlaygroundInputRequest,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user_full)
+    ) -> Any:
+        """运行输入测试"""
+        # 权限检查：需要有 playground 权限
+        await check_scenario_access_or_403(current_user, payload.app_id, db, permission="playground")
 
-        # 记录审计日志
-        audit_service = AuditService(db)
-        await audit_service.log_create(
-            user_id=current_user.id,
-            resource_id='',
-            username=current_user.username,
-            resource_type="PLAYGROUND_TEST",
-            scenario_id=payload.app_id,
-            details={"playground_type": None, "score": result.get("score")},
-            request=request
-        )
+        service = PlaygroundService(db)
+        try:
+            result = await service.run_input_check(payload)
 
-        return result
-    except Exception as e:
-        # Check if it's an HTTPException already
-        if isinstance(e, HTTPException):
-            raise e
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing playground request: {str(e)}"
-        )
+            # 记录审计日志
+            audit_service = AuditService(db)
+            await audit_service.log_create(
+                user_id=current_user.id,
+                resource_id='',
+                username=current_user.username,
+                resource_type="PLAYGROUND_TEST",
+                scenario_id=payload.app_id,
+                details={"playground_type": None, "score": result.get("score")},
+                request=request
+            )
+
+            return result
+        except Exception as e:
+            # Check if it's an HTTPException already
+            if isinstance(e, HTTPException):
+                raise e
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error processing playground request: {str(e)}"
+            )
 
 @router.get("/history", response_model=List[PlaygroundHistorySchema])
 async def get_playground_history(

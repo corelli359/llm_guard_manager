@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, Switch, Button, Row, Col, Typography, Tag, Divider, Space, message, Spin, Drawer, List, Tooltip, Modal, Descriptions } from 'antd';
-import { PlayCircleOutlined, BugOutlined, CheckCircleOutlined, StopOutlined, EditOutlined, UserOutlined, HistoryOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, BugOutlined, CheckCircleOutlined, StopOutlined, EditOutlined, UserOutlined, HistoryOutlined, ReloadOutlined, EyeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { scenariosApi, playgroundApi, getErrorMessage } from '../api';
 import { ScenarioApp, PlaygroundResponse, PlaygroundHistory } from '../types';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 
 const InputPlayground: React.FC = () => {
+  const navigate = useNavigate();
   const [scenarios, setScenarios] = useState<ScenarioApp[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingScenarios, setFetchingScenarios] = useState(false);
@@ -198,12 +200,20 @@ const InputPlayground: React.FC = () => {
             在这里您可以模拟用户输入，测试不同场景下的安全围栏检测效果。
           </Paragraph>
         </div>
-        <Button 
-          icon={<HistoryOutlined />} 
-          onClick={openHistory}
-        >
-          历史记录
-        </Button>
+        <Space>
+          <Button
+            icon={<QuestionCircleOutlined />}
+            onClick={() => navigate('/guardrail-flow')}
+          >
+            防护流程说明
+          </Button>
+          <Button
+            icon={<HistoryOutlined />}
+            onClick={openHistory}
+          >
+            历史记录
+          </Button>
+        </Space>
       </div>
 
       <Row gutter={24}>

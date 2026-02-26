@@ -19,7 +19,7 @@ const AppsPage: React.FC = () => {
       const res = await scenariosApi.getAll();
       setApps(res.data);
     } catch (error: any) {
-      message.error(getErrorMessage(error, '获取应用列表失败'));
+      message.error(getErrorMessage(error, '获取场景列表失败'));
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ const AppsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await scenariosApi.delete(id);
-      message.success('应用已注销');
+      message.success('场景已注销');
       fetchApps();
     } catch (error: any) {
       message.error(getErrorMessage(error, '删除失败'));
@@ -62,10 +62,10 @@ const AppsPage: React.FC = () => {
       const values = await form.validateFields();
       if (editingId) {
         await scenariosApi.update(editingId, values);
-        message.success('应用信息已更新');
+        message.success('场景信息已更新');
       } else {
         await scenariosApi.create(values);
-        message.success('应用已成功注册');
+        message.success('场景已成功注册');
       }
       setIsModalOpen(false);
       fetchApps();
@@ -75,8 +75,8 @@ const AppsPage: React.FC = () => {
   };
 
   const columns = [
-    { title: '应用 ID (App ID)', dataIndex: 'app_id', key: 'app_id', render: (text: string) => <b>{text}</b> },
-    { title: '应用名称', dataIndex: 'app_name', key: 'app_name' },
+    { title: '场景 ID (App ID)', dataIndex: 'app_id', key: 'app_id', render: (text: string) => <b>{text}</b> },
+    { title: '场景名称', dataIndex: 'app_name', key: 'app_name' },
     { title: '状态', dataIndex: 'is_active', key: 'is_active', render: (val: boolean) => <Switch size="small" checked={val} disabled /> },
     { 
       title: '功能模块', 
@@ -98,7 +98,7 @@ const AppsPage: React.FC = () => {
             进入管理
           </Button>
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Popconfirm title="确定注销该应用吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
+          <Popconfirm title="确定注销该场景吗？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
         </Space>
@@ -109,13 +109,13 @@ const AppsPage: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>应用管理 (App Management)</h2>
+        <h2>场景管理 (App Management)</h2>
         <Space>
           <Button icon={<QuestionCircleOutlined />} onClick={() => navigate('/app-process')}>
             申请流程说明
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            注册新应用
+            注册新场景
           </Button>
         </Space>
       </div>
@@ -128,7 +128,7 @@ const AppsPage: React.FC = () => {
       />
 
       <Modal 
-        title={editingId ? "编辑应用" : "注册新应用"} 
+        title={editingId ? "编辑场景" : "注册新场景"}
         open={isModalOpen} 
         onOk={handleOk} 
         onCancel={() => setIsModalOpen(false)}
@@ -136,18 +136,18 @@ const AppsPage: React.FC = () => {
         cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="app_id" label="应用唯一标识 (App ID)" rules={[{ required: true, message: '请输入应用 ID' }]}>
+          <Form.Item name="app_id" label="场景唯一标识 (App ID)" rules={[{ required: true, message: '请输入场景 ID' }]}>
             <Input disabled={!!editingId} placeholder="例如：chat_bot_01" />
           </Form.Item>
-          <Form.Item name="app_name" label="应用名称" rules={[{ required: true, message: '请输入应用名称' }]}>
+          <Form.Item name="app_name" label="场景名称" rules={[{ required: true, message: '请输入场景名称' }]}>
             <Input placeholder="例如：智能客服助手" />
           </Form.Item>
-          <Form.Item name="description" label="应用描述">
-            <Input.TextArea placeholder="可选：简要描述应用用途" />
+          <Form.Item name="description" label="场景描述">
+            <Input.TextArea placeholder="可选：简要描述场景用途" />
           </Form.Item>
           
           <Card size="small" title="功能开关" style={{ marginTop: 16 }}>
-             <Form.Item name="is_active" label="激活应用" valuePropName="checked">
+             <Form.Item name="is_active" label="激活场景" valuePropName="checked">
                 <Switch />
              </Form.Item>
              <Form.Item name="enable_blacklist" label="启用敏感词黑名单" valuePropName="checked">
