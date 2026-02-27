@@ -31,7 +31,6 @@ import AnnotatorStatsPage from './pages/AnnotatorStats';
 import AppsPage from './pages/Apps';
 import AppDashboard from './pages/AppDashboard';
 import LoginPage from './pages/LoginPage';
-import SSOLogin from './pages/SSOLogin';
 import AuditLogsPage from './pages/AuditLogs';
 import MyScenariosPage from './pages/MyScenarios';
 import AppProcessGuide from './pages/AppProcessGuide';
@@ -361,7 +360,6 @@ const App: React.FC = () => {
       <Router basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/sso/login" element={<SSOLogin />} />
           <Route element={<AuthLayout />}>
             <Route path="/*" element={<AppLayout />} /> {/* Catch all other routes under AuthLayout */}
           </Route>

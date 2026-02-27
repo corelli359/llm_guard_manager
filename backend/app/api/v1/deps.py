@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -16,45 +16,11 @@ reusable_oauth2 = OAuth2PasswordBearer(
 
 class TokenData(BaseModel):
     username: str | None = None
-    user_id: str | None = None  # SSO用户使用user_id
-
-
-async def get_current_user_id(token: str = Depends(reusable_oauth2)) -> str:
-    """
-    获取当前用户ID（支持SSO）
-
-    从JWT Token中提取user_id（SSO）或username（传统登录）
-
-    Args:
-        token: JWT Token
-
-    Returns:
-        用户ID（user_id或username）
-
-    Raises:
-        HTTPException: 401 如果 Token 无效
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        # sub字段可能是user_id（SSO）或username（传统登录）
-        sub: str = payload.get("sub")
-        if sub is None:
-            raise credentials_exception
-        return sub
-    except JWTError:
-        raise credentials_exception
 
 
 async def get_current_user(token: str = Depends(reusable_oauth2)) -> str:
     """
-    获取当前用户名（保留向后兼容）
+    获取当前用户名
 
     Args:
         token: JWT Token
@@ -90,18 +56,7 @@ async def get_current_user_full(
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    获取完整的当前用户对象（支持SSO和传统登录）
-
-    Args:
-        token: JWT Token
-        db: 数据库会话
-
-    Returns:
-        User 对象
-
-    Raises:
-        HTTPException: 401 如果 Token 无效或用户不存在
-        HTTPException: 403 如果用户被禁用
+    获取完整的当前用户对象
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -119,10 +74,8 @@ async def get_current_user_full(
     except JWTError:
         raise credentials_exception
 
-    # 查询数据库获取完整用户信息（支持user_id和username两种方式）
-    query = select(User).where(
-        or_(User.user_id == sub, User.username == sub)
-    )
+    # 查询数据库获取完整用户信息
+    query = select(User).where(User.username == sub)
     result = await db.execute(query)
     user = result.scalars().first()
 
@@ -144,19 +97,6 @@ async def get_current_user_full(
 def require_role(allowed_roles: List[str]):
     """
     角色检查依赖工厂
-
-    Args:
-        allowed_roles: 允许的角色列表
-
-    Returns:
-        依赖函数
-
-    Example:
-        @router.post("/")
-        async def create_user(
-            current_user: User = Depends(require_role(["SYSTEM_ADMIN"]))
-        ):
-            ...
     """
     async def role_checker(
         current_user: User = Depends(get_current_user_full)
@@ -169,49 +109,3 @@ def require_role(allowed_roles: List[str]):
         return current_user
 
     return role_checker
-
-
-def require_scenario_permission(permission: str):
-    """
-    场景权限检查依赖工厂
-
-    Args:
-        permission: 需要的权限名称（scenario_basic_info, scenario_keywords, etc.）
-
-    Returns:
-        依赖函数
-
-    Example:
-        @router.post("/{scenario_id}/keywords")
-        async def create_keyword(
-            scenario_id: str,
-            current_user: User = Depends(require_scenario_permission("scenario_keywords"))
-        ):
-            ...
-    """
-    async def permission_checker(
-        scenario_id: str,
-        current_user: User = Depends(get_current_user_full),
-        db: AsyncSession = Depends(get_db)
-    ) -> User:
-        from app.services.permission import PermissionService
-
-        # SYSTEM_ADMIN 有所有权限
-        if current_user.role == "SYSTEM_ADMIN":
-            return current_user
-
-        # 其他角色需要检查权限
-        perm_service = PermissionService(db)
-        has_perm = await perm_service.check_scenario_permission(
-            current_user.id, scenario_id, permission
-        )
-
-        if not has_perm:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Missing permission: {permission} for scenario: {scenario_id}"
-            )
-
-        return current_user
-
-    return permission_checker

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.db import get_db
+from app.core.security import get_password_hash
 from app.api.v1.deps import get_current_user, get_current_user_full, require_role
 from app.models.db_meta import User, UserScenarioRole, Role
 from app.services.audit import AuditService
@@ -16,13 +17,12 @@ router = APIRouter()
 
 
 # ============================================
-# V2 Schemas - 简化的用户模型
+# Schemas
 # ============================================
 
 class UserListResponse(BaseModel):
     """用户列表响应"""
     id: str
-    user_id: str | None = None  # USAP的UserID
     username: str | None = None
     display_name: str | None = None
     role: str
@@ -33,9 +33,22 @@ class UserListResponse(BaseModel):
         from_attributes = True
 
 
+class UserCreateRequest(BaseModel):
+    """创建用户请求"""
+    username: str = Field(..., min_length=2, max_length=64)
+    password: str = Field(..., min_length=6, max_length=128)
+    display_name: str | None = None
+    role: str = Field(default="ANNOTATOR")
+
+
+class UserPasswordReset(BaseModel):
+    """重置密码请求"""
+    password: str = Field(..., min_length=6, max_length=128)
+
+
 class UserRoleUpdate(BaseModel):
     """修改用户角色"""
-    role: str = Field(..., description="用户角色: SYSTEM_ADMIN, SCENARIO_ADMIN, ANNOTATOR, AUDITOR")
+    role: str = Field(..., description="用户角色")
 
 
 class UserStatusUpdate(BaseModel):
@@ -60,6 +73,47 @@ async def list_users(
     stmt = select(User).order_by(User.created_at.desc())
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+@router.post("/", response_model=UserListResponse)
+async def create_user(
+    user_in: UserCreateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(["SYSTEM_ADMIN"]))
+):
+    """创建用户 - 仅 SYSTEM_ADMIN"""
+    valid_roles = ["SYSTEM_ADMIN", "SCENARIO_ADMIN", "ANNOTATOR", "AUDITOR"]
+    if user_in.role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
+
+    stmt = select(User).where(User.username == user_in.username)
+    result = await db.execute(stmt)
+    if result.scalars().first():
+        raise HTTPException(status_code=400, detail="用户名已存在")
+
+    new_user = User(
+        id=str(uuid.uuid4()),
+        username=user_in.username,
+        hashed_password=get_password_hash(user_in.password),
+        display_name=user_in.display_name,
+        role=user_in.role,
+        created_by=current_user.id,
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+
+    audit_service = AuditService(db)
+    await audit_service.log_create(
+        user_id=current_user.id,
+        username=current_user.username,
+        resource_type="USER",
+        resource_id=new_user.id,
+        details={"username": user_in.username, "role": user_in.role},
+        request=request
+    )
+    return new_user
 
 
 @router.put("/{user_id}/role")
@@ -101,7 +155,7 @@ async def update_user_role(
     audit_service = AuditService(db)
     await audit_service.log_update(
         user_id=current_user.id,
-        username=current_user.user_id or current_user.username,
+        username=current_user.username,
         resource_type="USER",
         resource_id=user_id,
         details={"old_role": old_role, "new_role": role_in.role},
@@ -109,6 +163,36 @@ async def update_user_role(
     )
 
     return {"message": "Role updated", "role": role_in.role}
+
+
+@router.put("/{user_id}/password")
+async def reset_user_password(
+    user_id: str,
+    password_in: UserPasswordReset,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(["SYSTEM_ADMIN"]))
+):
+    """重置用户密码 - 仅 SYSTEM_ADMIN"""
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.hashed_password = get_password_hash(password_in.password)
+    await db.commit()
+
+    audit_service = AuditService(db)
+    await audit_service.log_update(
+        user_id=current_user.id,
+        username=current_user.username,
+        resource_type="USER",
+        resource_id=user_id,
+        details={"action": "password_reset"},
+        request=request
+    )
+    return {"message": "Password reset successfully"}
 
 
 @router.patch("/{user_id}/status")
@@ -141,7 +225,7 @@ async def toggle_user_status(
     audit_service = AuditService(db)
     await audit_service.log_update(
         user_id=current_user.id,
-        username=current_user.user_id or current_user.username,
+        username=current_user.username,
         resource_type="USER",
         resource_id=user_id,
         details={"is_active": status_in.is_active},
@@ -180,7 +264,7 @@ async def delete_user(
     audit_service = AuditService(db)
     await audit_service.log_delete(
         user_id=current_user.id,
-        username=current_user.user_id or current_user.username,
+        username=current_user.username,
         resource_type="USER",
         resource_id=user_id,
         details={"deleted_user_id": user.user_id},
@@ -270,7 +354,7 @@ async def assign_role_to_user(
     audit_service = AuditService(db)
     await audit_service.log_create(
         user_id=current_user.id,
-        username=current_user.user_id or current_user.username,
+        username=current_user.username,
         resource_type="USER_ROLE_ASSIGNMENT",
         resource_id=assignment.id,
         scenario_id=role_assign.scenario_id,
@@ -308,7 +392,7 @@ async def remove_user_role(
     audit_service = AuditService(db)
     await audit_service.log_delete(
         user_id=current_user.id,
-        username=current_user.user_id or current_user.username,
+        username=current_user.username,
         resource_type="USER_ROLE_ASSIGNMENT",
         resource_id=assignment_id,
         details={"user_id": user_id},

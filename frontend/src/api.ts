@@ -155,8 +155,10 @@ export const performanceApi = {
 
 export const usersApi = {
     list: () => api.get('/users/'),
+    create: (data: { username: string; password: string; display_name?: string; role?: string }) => api.post('/users/', data),
     updateRole: (id: string, role: string) => api.put(`/users/${id}/role`, { role }),
     updateStatus: (id: string, active: boolean) => api.patch(`/users/${id}/status`, { is_active: active }),
+    resetPassword: (id: string, password: string) => api.put(`/users/${id}/password`, { password }),
     delete: (id: string) => api.delete(`/users/${id}`),
 };
 
@@ -218,68 +220,9 @@ export const stagingApi = {
     getTaskOverview: (taskType: string) => api.get(`/staging/overview?task_type=${taskType}`),
 };
 
-// Permissions API
-export const permissionsApi = {
-  getMyPermissions: () => api.get('/permissions/me'),
-  checkPermission: (scenarioId: string, permission: string) =>
-    api.get('/permissions/check', { params: { scenario_id: scenarioId, permission } }),
-};
-
-// User Scenarios API
-export const userScenariosApi = {
-  assignScenario: (userId: string, data: any) =>
-    api.post(`/users/${userId}/scenarios`, data),
-  configurePermissions: (userId: string, scenarioId: string, permissions: any) =>
-    api.put(`/users/${userId}/scenarios/${scenarioId}/permissions`, permissions),
-  getUserScenarios: (userId: string) =>
-    api.get(`/users/${userId}/scenarios`),
-  removeScenarioAssignment: (userId: string, scenarioId: string) =>
-    api.delete(`/users/${userId}/scenarios/${scenarioId}`),
-};
-
 // Audit Logs API
 export const auditLogsApi = {
   queryLogs: (params: any) => api.get('/audit-logs/', { params }),
-};
-
-// SSO API
-export const ssoApi = {
-  // SSO登录（使用Ticket）
-  login: (ticket: string) => api.post<{
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-    user_id: string;
-    role: string;
-  }>('/sso/login', { ticket }),
-
-  // 获取当前用户信息
-  getUserInfo: () => api.get<{
-    user_id: string;
-    user_name: string;
-    email?: string;
-    department?: string;
-    phone?: string;
-    role: string;
-    scenarios: any[];
-  }>('/sso/user-info'),
-
-  // 批量获取用户信息
-  getUsersBatch: (userIds: string[]) => api.post<{
-    users: Array<{
-      user_id: string;
-      user_name: string;
-      email?: string;
-      department?: string;
-    }>;
-    not_found: string[];
-  }>('/sso/users/batch', { user_ids: userIds }),
-
-  // SSO健康检查
-  health: () => api.get<{
-    sso_enabled: boolean;
-    usap_healthy: boolean;
-  }>('/sso/health'),
 };
 
 export default api;

@@ -96,52 +96,12 @@ export interface PlaygroundHistory {
 // RBAC Types
 export interface User {
   id: string;
-  user_id: string | null;
+  username: string | null;
+  display_name: string | null;
   role: 'SYSTEM_ADMIN' | 'SCENARIO_ADMIN' | 'ANNOTATOR' | 'AUDITOR';
   is_active: boolean;
   created_at: string;
   updated_at?: string;
-}
-
-export interface UserScenarioAssignment {
-  id: string;
-  user_id: string;
-  scenario_id: string;
-  role: 'SCENARIO_ADMIN' | 'ANNOTATOR';
-  created_at: string;
-  created_by?: string;
-}
-
-export interface ScenarioAdminPermission {
-  id: string;
-  user_id: string;
-  scenario_id: string;
-  scenario_basic_info: boolean;
-  scenario_keywords: boolean;
-  scenario_policies: boolean;
-  playground: boolean;
-  performance_test: boolean;
-  created_at: string;
-  updated_at?: string;
-  created_by?: string;
-}
-
-export interface UserPermissions {
-  user_id: string;
-  username: string;
-  role: string;
-  scenarios: Array<{
-    scenario_id: string;
-    scenario_name: string;
-    role: string;
-    permissions?: {
-      scenario_basic_info: boolean;
-      scenario_keywords: boolean;
-      scenario_policies: boolean;
-      playground: boolean;
-      performance_test: boolean;
-    };
-  }>;
 }
 
 export interface AuditLog {
@@ -156,43 +116,6 @@ export interface AuditLog {
   ip_address?: string;
   user_agent?: string;
   created_at: string;
-}
-
-// SSO Types
-export interface SSOLoginResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  user_id: string;
-  role: string;
-}
-
-export interface SSOUserInfo {
-  user_id: string;
-  user_name: string;
-  email?: string;
-  department?: string;
-  phone?: string;
-  role: string;
-  scenarios: Array<{
-    scenario_id: string;
-    scenario_name: string;
-    role: string;
-    permissions?: {
-      scenario_basic_info: boolean;
-      scenario_keywords: boolean;
-      scenario_policies: boolean;
-      playground: boolean;
-      performance_test: boolean;
-    };
-  }>;
-}
-
-export interface SSOUserBrief {
-  user_id: string;
-  user_name: string;
-  email?: string;
-  department?: string;
 }
 
 // RBAC V2 类型
