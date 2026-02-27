@@ -1,5 +1,6 @@
 from datetime import timedelta
 from typing import Any
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -38,13 +39,28 @@ async def login_access_token(
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        user_role = "ADMIN"
+        user_role = "SYSTEM_ADMIN"
+        # 自动同步到数据库，确保 get_current_user_full 能查到
+        stmt = select(User).where(User.username == HARDCODED_USERNAME)
+        result = await db.execute(stmt)
+        user = result.scalars().first()
+        if not user:
+            user = User(
+                id=str(uuid.uuid4()),
+                username=HARDCODED_USERNAME,
+                hashed_password=HARDCODED_HASHED_PASSWORD,
+                role="SYSTEM_ADMIN",
+                display_name="系统管理员",
+                is_active=True,
+            )
+            db.add(user)
+            await db.commit()
     else:
         # 2. Check Database User
         stmt = select(User).where(User.username == username)
         result = await db.execute(stmt)
         user = result.scalars().first()
-        
+
         if not user or not verify_password(form_data.password, user.hashed_password):
              raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

@@ -26,8 +26,7 @@ api.interceptors.response.use(
       localStorage.removeItem('access_token')
       localStorage.removeItem('user_role')
       localStorage.removeItem('current_app_id')
-      const base = import.meta.env.VITE_BASE_PATH || '/'
-      window.location.href = `${base}login`
+      window.location.href = `${import.meta.env.BASE_URL}login`
     }
     return Promise.reject(error)
   }

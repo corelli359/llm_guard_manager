@@ -30,7 +30,7 @@ api.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('user_role');
       localStorage.removeItem('current_app_id');
-      window.location.href = '/login';
+      window.location.href = `${import.meta.env.BASE_URL}login`;
     }
     return Promise.reject(error);
   }
