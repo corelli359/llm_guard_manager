@@ -64,4 +64,5 @@ backendbak
 *.log
 *.html
 *.jpg
-
+*.xlsx
+.mvn/

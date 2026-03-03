@@ -21,7 +21,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 不得修改测试标准
 - 必须填写部署检查表
 
-### 铁令 4: K8s 部署配置
+### 铁令 4: Java 开发规范
+**所有 Java 后端（backend-java/）代码开发必须严格遵守 `backend-java/JAVA_DEV_STANDARD.md` 中的规范！**
+- 命名、注释、安全编码、异常处理、日志、数据库操作等必须按规范执行
+- 不得跳过注释要求（文件头、类注释、方法注释）
+- 不得违反安全编码规范（SQL注入、XSS、敏感信息等）
+- Controller 统一使用 `R` 类返回格式
+
+### 铁令 5: K8s 部署配置
 **前端构建必须使用以下环境变量：**
 ```bash
 VITE_BASE_PATH=/web-manager/ VITE_API_BASE_URL=/dbmanage/api/v1 npm run build
