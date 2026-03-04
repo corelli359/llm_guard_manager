@@ -78,6 +78,13 @@ def _pct(count: int, total: int) -> float:
     return round(count / total * 100, 2) if total else 0.0
 
 
+def _extract_tag_code(rule_name: str) -> str:
+    """从规则名提取标签编码: 'A.2.20-UNSAFE' -> 'A.2.20', 'A.1.9-CONTROVERSIAL' -> 'A.1.9'"""
+    # 规则格式: {标签编码}-{安全等级}，标签编码是 A.x.y 格式
+    parts = rule_name.rsplit("-", 1)
+    return parts[0] if len(parts) == 2 else rule_name
+
+
 def calculate_metrics(records: list[dict]) -> dict:
     """计算全部指标，返回结构化结果"""
     total = len(records)
@@ -101,9 +108,10 @@ def calculate_metrics(records: list[dict]) -> dict:
         label = r.get("decision_label", "unknown")
         label_counts[label] += 1
 
-        for tag in r.get("hit_tags", []):
-            tag_counter[tag] += 1
-            rule_hit_counter[tag] += 1
+        for raw_tag in r.get("hit_tags", []):
+            tag_code = _extract_tag_code(raw_tag)
+            tag_counter[tag_code] += 1
+            rule_hit_counter[raw_tag] += 1
         for word in r.get("hit_words", []):
             word_counter[word] += 1
             unique_hit_words.add(word)

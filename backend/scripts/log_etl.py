@@ -25,6 +25,8 @@ AUDIT_LINE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}),?\d*\s+-\s
 
 LABEL_MAP = {0: "pass", 50: "rewrite", 100: "block", 1000: "review"}
 
+CHECKPOINT_FILE = ".etl_checkpoint.json"
+
 
 def extract_decisions(all_decision_dict: dict) -> tuple:
     """从 all_decision_dict 提取 hit_tags, hit_words, decisions 列表"""
@@ -192,16 +194,20 @@ def detect_log_type(filepath: Path) -> str:
     return "audit"
 
 
-def process_file(filepath: Path, log_type: str, output_dir: Path, seen_ids: set) -> dict:
-    """处理单个日志文件，返回统计信息"""
+def process_file(filepath: Path, log_type: str, output_dir: Path,
+                  seen_ids: set, start_offset: int = 0) -> tuple[dict, int]:
+    """处理单个日志文件，支持从指定偏移量开始（增量模式）。
+    返回 (统计信息, 新的偏移量)。
+    """
     stats = {"total": 0, "processed": 0, "skipped_dup": 0, "skipped_err": 0}
-    # 按 (app_id, date) 分组缓存
     buffers: dict[tuple, list] = defaultdict(list)
 
     parse_fn = parse_audit_line if log_type == "audit" else parse_request_line
     flatten_fn = flatten_audit_log if log_type == "audit" else flatten_request_log
 
     with open(filepath, "r", encoding="utf-8") as f:
+        if start_offset > 0:
+            f.seek(start_offset)
         for line in f:
             stats["total"] += 1
             raw = parse_fn(line)
@@ -222,6 +228,8 @@ def process_file(filepath: Path, log_type: str, output_dir: Path, seen_ids: set)
             buffers[(app_id, date_str)].append(flat)
             stats["processed"] += 1
 
+        end_offset = f.tell()
+
     # 写入文件
     for (app_id, date_str), records in buffers.items():
         app_dir = output_dir / app_id
@@ -231,7 +239,46 @@ def process_file(filepath: Path, log_type: str, output_dir: Path, seen_ids: set)
             for rec in records:
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
-    return stats
+    return stats, end_offset
+
+
+# ============================================================
+# Checkpoint 管理（增量加工）
+# ============================================================
+
+def load_checkpoint(output_dir: Path) -> dict:
+    """加载 checkpoint 文件"""
+    cp_file = output_dir / CHECKPOINT_FILE
+    if cp_file.exists():
+        with open(cp_file, "r") as f:
+            return json.load(f)
+    return {"files": {}, "seen_ids": []}
+
+
+def save_checkpoint(output_dir: Path, checkpoint: dict):
+    """保存 checkpoint 文件"""
+    cp_file = output_dir / CHECKPOINT_FILE
+    with open(cp_file, "w") as f:
+        json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+
+
+def get_file_offset(checkpoint: dict, filepath: Path) -> int:
+    """获取文件上次处理到的偏移量。如果文件被轮转（变小了），返回 0 重新处理。"""
+    key = str(filepath)
+    info = checkpoint["files"].get(key)
+    if not info:
+        return 0
+    current_size = filepath.stat().st_size
+    last_size = info.get("size", 0)
+    last_offset = info.get("offset", 0)
+    # 文件变小了 = 被轮转，从头开始
+    if current_size < last_size:
+        logger.info(f"  文件被轮转（{last_size} -> {current_size}），从头处理")
+        return 0
+    # 文件没变 = 没有新数据
+    if current_size == last_offset:
+        return -1  # 标记为无需处理
+    return last_offset
 
 
 def main():
@@ -240,14 +287,23 @@ def main():
     parser.add_argument("--type", "-t", choices=["audit", "request", "auto"], default="auto",
                         help="日志类型（默认 auto 自动检测）")
     parser.add_argument("--output", "-o", required=True, help="输出目录路径")
+    parser.add_argument("--full", action="store_true", help="全量模式（忽略 checkpoint，从头处理）")
     args = parser.parse_args()
 
     input_path = Path(args.input)
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    seen_ids: set = set()
-    total_stats = {"total": 0, "processed": 0, "skipped_dup": 0, "skipped_err": 0}
+    # 加载 checkpoint
+    if args.full:
+        checkpoint = {"files": {}, "seen_ids": []}
+        logger.info("全量模式：忽略 checkpoint")
+    else:
+        checkpoint = load_checkpoint(output_dir)
+        logger.info(f"增量模式：已有 {len(checkpoint['seen_ids'])} 个已处理 request_id")
+
+    seen_ids: set = set(checkpoint["seen_ids"])
+    total_stats = {"total": 0, "processed": 0, "skipped_dup": 0, "skipped_err": 0, "skipped_unchanged": 0}
 
     # 收集要处理的文件
     if input_path.is_file():
@@ -262,20 +318,39 @@ def main():
         sys.exit(1)
 
     for filepath in files:
+        # 检查增量偏移
+        offset = 0 if args.full else get_file_offset(checkpoint, filepath)
+        if offset == -1:
+            logger.info(f"跳过（无新数据）: {filepath.name}")
+            total_stats["skipped_unchanged"] += 1
+            continue
+
         log_type = args.type
         if log_type == "auto":
             log_type = detect_log_type(filepath)
             logger.info(f"自动检测 {filepath.name} 类型: {log_type}")
 
-        logger.info(f"处理文件: {filepath} (类型: {log_type})")
-        stats = process_file(filepath, log_type, output_dir, seen_ids)
-        for k in total_stats:
+        logger.info(f"处理文件: {filepath} (类型: {log_type}, 偏移: {offset})")
+        stats, end_offset = process_file(filepath, log_type, output_dir, seen_ids, offset)
+        for k in ("total", "processed", "skipped_dup", "skipped_err"):
             total_stats[k] += stats[k]
-        logger.info(f"  行数={stats['total']}, 处理={stats['processed']}, "
+
+        # 更新 checkpoint
+        checkpoint["files"][str(filepath)] = {
+            "offset": end_offset,
+            "size": filepath.stat().st_size,
+        }
+
+        logger.info(f"  新增行={stats['total']}, 处理={stats['processed']}, "
                      f"重复跳过={stats['skipped_dup']}, 解析失败={stats['skipped_err']}")
 
-    logger.info(f"完成! 总计: 行数={total_stats['total']}, 处理={total_stats['processed']}, "
-                f"重复跳过={total_stats['skipped_dup']}, 解析失败={total_stats['skipped_err']}")
+    # 保存 checkpoint
+    checkpoint["seen_ids"] = list(seen_ids)
+    save_checkpoint(output_dir, checkpoint)
+
+    logger.info(f"完成! 总计: 新增行={total_stats['total']}, 处理={total_stats['processed']}, "
+                f"重复跳过={total_stats['skipped_dup']}, 解析失败={total_stats['skipped_err']}, "
+                f"无变化文件={total_stats['skipped_unchanged']}")
     logger.info(f"输出目录: {output_dir}")
 
 

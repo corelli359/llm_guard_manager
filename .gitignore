@@ -66,3 +66,4 @@ backendbak
 *.jpg
 *.xlsx
 .mvn/
+backend/data/**/*.json*

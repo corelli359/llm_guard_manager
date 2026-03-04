@@ -40,6 +40,7 @@ import EvalTestCasesPage from './pages/EvalTestCases';
 import EvalTasksPage from './pages/EvalTasks';
 import EvalTaskResultsPage from './pages/EvalTaskResults';
 import EvalMetricsPage from './pages/EvalMetrics';
+import MetricsDashboard from './pages/MetricsDashboard';
 import { scenariosApi } from './api';
 import { PermissionProvider } from './contexts/PermissionContext';
 import { usePermission } from './hooks/usePermission';
@@ -191,6 +192,13 @@ const AppLayout: React.FC = () => {
     if (toolChildren.length > 0) {
       items.push({ type: 'group', label: '测试工具', children: toolChildren });
     }
+
+    // 安全运营
+    items.push({
+      key: '/metrics',
+      icon: <BarChartOutlined />,
+      label: <Link to="/metrics">安全运营指标</Link>,
+    });
 
     // 自动化测评
     const evalChildren: any[] = [
@@ -346,6 +354,7 @@ const AppLayout: React.FC = () => {
               <Route path="/eval/tasks" element={<EvalTasksPage />} />
               <Route path="/eval/tasks/:taskId/results" element={<EvalTaskResultsPage />} />
               <Route path="/eval/tasks/:taskId/metrics" element={<EvalMetricsPage />} />
+              <Route path="/metrics" element={<MetricsDashboard />} />
             </Routes>
           </div>
         </Content>

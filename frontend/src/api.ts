@@ -227,6 +227,27 @@ export const auditLogsApi = {
 
 export default api;
 
+// ============ 安全运营指标 API ============
+export const metricsApi = {
+  // 列出已加工的场景
+  getApps: () => api.get('/metrics/apps'),
+  // 触发日志加工
+  runEtl: (logDir?: string, logType?: string, full?: boolean) =>
+    api.post('/metrics/etl', null, { params: { log_dir: logDir, log_type: logType || 'auto', full: full || false } }),
+  // 指标概览
+  getOverview: (params: { app_id?: string; date_start?: string; date_end?: string }) =>
+    api.get('/metrics/overview', { params }),
+  // 风险分布
+  getRiskDistribution: (params: { app_id?: string; date_start?: string; date_end?: string }) =>
+    api.get('/metrics/risk-distribution', { params }),
+  // 规则质量
+  getRuleQuality: (params: { app_id?: string; date_start?: string; date_end?: string }) =>
+    api.get('/metrics/rule-quality', { params }),
+  // 日志文件列表
+  getLogFiles: (logDir?: string) =>
+    api.get('/metrics/log-files', { params: { log_dir: logDir } }),
+};
+
 // ============ 自动化测评 API ============
 export const evaluationApi = {
   // 题库
