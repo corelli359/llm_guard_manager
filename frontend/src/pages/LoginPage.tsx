@@ -22,7 +22,7 @@ const LoginPage: React.FC = () => {
       localStorage.setItem('access_token', response.data.access_token);
       localStorage.setItem('user_role', role);
       
-      if (loginType === 'admin' && role !== 'ADMIN') {
+      if (loginType === 'admin' && !['ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
           message.warning('您不是管理员，已跳转至审核界面');
       } else if (loginType === 'auditor' && role === 'ADMIN') {
           message.info('检测到管理员账号登录');

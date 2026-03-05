@@ -92,28 +92,7 @@ const AuditLogsPage: React.FC = () => {
       key: 'username',
       width: 120,
     },
-    {
-      title: '操作',
-      dataIndex: 'action',
-      key: 'action',
-      width: 100,
-      render: (action: string) => (
-        <Tag color={getActionColor(action)}>{action}</Tag>
-      ),
-    },
-    {
-      title: '资源类型',
-      dataIndex: 'resource_type',
-      key: 'resource_type',
-      width: 150,
-    },
-    {
-      title: '资源ID',
-      dataIndex: 'resource_id',
-      key: 'resource_id',
-      width: 200,
-      ellipsis: true,
-    },
+    // 操作、资源类型、资源ID 暂时隐藏
     {
       title: '场景ID',
       dataIndex: 'scenario_id',
@@ -161,15 +140,7 @@ const AuditLogsPage: React.FC = () => {
               <Select.Option value="EXPORT">EXPORT</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="resource_type" label="资源类型">
-            <Select placeholder="选择资源类型" style={{ width: 150 }} allowClear>
-              <Select.Option value="USER">USER</Select.Option>
-              <Select.Option value="SCENARIO">SCENARIO</Select.Option>
-              <Select.Option value="KEYWORD">KEYWORD</Select.Option>
-              <Select.Option value="POLICY">POLICY</Select.Option>
-              <Select.Option value="META_TAG">META_TAG</Select.Option>
-            </Select>
-          </Form.Item>
+          {/* 资源类型筛选暂时隐藏，待后端数据规范后启用 */}
           <Form.Item name="scenario_id" label="场景ID">
             <Input placeholder="输入场景ID" style={{ width: 150 }} />
           </Form.Item>
